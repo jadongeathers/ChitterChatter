@@ -2,26 +2,45 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
+import { UserConfig } from 'vite'
 
-export default defineConfig({
+// Create a properly typed config object
+const config: UserConfig = {
   plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  server: {
-    port: 3000,
-    https: {
-      key: fs.readFileSync(path.resolve(__dirname, 'certificates/localhost-key.pem')),
-      cert: fs.readFileSync(path.resolve(__dirname, 'certificates/localhost.pem')),
-    },
-    proxy: {
-      "/api": {
-        target: "http://127.0.0.1:5000", 
-        changeOrigin: true,
-        secure: false,
+}
+
+// Add development-specific configurations
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    config.server = {
+      port: 3000,
+      proxy: {
+        "/api": {
+          target: "http://127.0.0.1:5000", 
+          changeOrigin: true,
+          secure: false,
+        },
       },
-    },
-  },
-})
+    }
+    
+    // Only add HTTPS configuration if certificate files exist
+    const certPath = path.resolve(__dirname, 'certificates/localhost.pem')
+    const keyPath = path.resolve(__dirname, 'certificates/localhost-key.pem')
+    
+    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+      config.server.https = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath),
+      }
+    }
+  } catch (error) {
+    console.warn('Unable to configure HTTPS for development server:', error)
+  }
+}
+
+export default defineConfig(config)
