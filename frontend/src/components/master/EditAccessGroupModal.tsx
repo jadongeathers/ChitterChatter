@@ -40,7 +40,6 @@ export const EditAccessGroupModal: React.FC<EditAccessGroupModalProps> = ({
       
     } catch (error) {
       console.error("Error updating access group:", error);
-      setError(`Failed to update: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
