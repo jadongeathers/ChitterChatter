@@ -1,54 +1,45 @@
 from flask import Flask
-from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
-
+from flask_cors import CORS
+from flask_migrate import Migrate
+from app.config import Config
 from app.routes import register_blueprints
+from app.models import db
+import os
 
 # Initialize extensions
-db = SQLAlchemy()
-migrate = Migrate()
 jwt = JWTManager()
+migrate = Migrate()
 
-def create_app(config=None):
-    app = Flask(__name__)
+def create_app():
+    app = Flask(__name__, static_folder="static")
     
-    # Load configuration
-    if config:
-        app.config.from_object(config)
-    else:
-        # Default configuration
-        app.config.from_pyfile('config.py')
+    # Load configurations
+    app.config.from_object(Config)
+    Config.validate()
     
-    # Set up CORS - place this BEFORE registering blueprints
-    CORS(app, 
-         origins=[
-             "https://www.chitterchatter.app", 
-             "https://chitterchatter.app",
-             "https://chitterchatter-756h0bo5i-jadongeathers-projects.vercel.app",
-             "http://localhost:3000"
-         ], 
-         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         allow_headers=["Content-Type", "Authorization"],
-         supports_credentials=True)
-    
-    # Initialize extensions with app
-    db.init_app(app)
-    migrate.init_app(app, db)
+    # Initialize extensions
+    db.init_app(app) 
     jwt.init_app(app)
-    # Initialize other extensions
     
-    # Register blueprints using your existing function
+    # Configure CORS based on environment
+    cors_origins = [
+        "*.jadongeathers-projects.vercel.app",
+        "https://chitterchatter.app",  # Without www
+        "https://www.chitterchatter.app",  # Production 
+        "http://localhost:3000",       # Local development
+    ]
+
+    # In production, add your Vercel frontend URL
+    if os.environ.get("FLASK_ENV") == "production":
+        production_frontend = os.environ.get("FRONTEND_URL", "https://chitterchatter.app")
+        cors_origins.append(production_frontend)
+    
+    CORS(app, resources={r"/*": {"origins": cors_origins}})
+    
+    migrate.init_app(app, db)
+
+    # Register blueprints
     register_blueprints(app)
-    
-    # Add CORS testing endpoint
-    @app.route('/api/test-cors', methods=['GET', 'OPTIONS'])
-    def test_cors():
-        from flask import request, jsonify
-        return jsonify({
-            'message': 'CORS is working!',
-            'origin': request.headers.get('Origin', 'No origin')
-        })
-    
+
     return app
