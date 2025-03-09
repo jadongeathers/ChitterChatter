@@ -22,6 +22,8 @@ import FeedbackHelp from "./pages/student/FeedbackHelp";
 import InstructorFeedbackHelp from "./pages/instructor/FeedbackHelp";
 import InstructorSettings from "./pages/instructor/Settings";
 
+import { fetchWithAuth } from "./utils/api";
+
 // Debug component to help find routing issues
 const NoMatch = () => {
   const location = useLocation();
@@ -62,7 +64,7 @@ function App() {
           return;
         }
 
-        const response = await fetch("/api/auth/me", {
+        const response = await fetchWithAuth("/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
 

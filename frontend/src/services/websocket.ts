@@ -1,4 +1,7 @@
 // websocket.ts
+
+import { fetchWithAuth } from "@/utils/api";
+
 interface MessageCallback {
   (message: { type: string; text: string; is_final?: boolean }): void;
 }
@@ -107,7 +110,7 @@ export const setupWebRTCConnection = async (
       throw new Error("Failed to create SDP offer");
     }
 
-    const response = await fetch("https://api.openai.com/v1/realtime", {
+    const response = await fetchWithAuth("https://api.openai.com/v1/realtime", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${clientSecret}`,

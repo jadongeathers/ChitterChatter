@@ -27,7 +27,7 @@ const Feedback: React.FC = () => {
   useEffect(() => {
     const fetchFeedback = async () => {
       try {
-        const response = await fetch(`/api/conversations/conversation/${id}/feedback`);
+        const response = await fetchWithAuth(`/api/conversations/conversation/${id}/feedback`);
         const data = await response.json();
         if (!response.ok) {
           throw new Error(data.error || "Failed to fetch feedback");

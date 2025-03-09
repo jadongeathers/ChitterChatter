@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, MessageSquare, HelpCircle } from "lucide-react";
+import { Check, HelpCircle } from "lucide-react";
 
 type UserRole = "student" | "instructor" | "master";
 
@@ -29,8 +29,8 @@ const Layout: React.FC<LayoutProps> = ({ currentRole }) => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState<string>("Loading...");
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
-  const [userId, setUserId] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [_userId, setUserId] = useState<number | null>(null);
+  const [_isLoading, setIsLoading] = useState<boolean>(true);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   
   // Feedback form state

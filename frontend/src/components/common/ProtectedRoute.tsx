@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
+import { fetchWithAuth } from '@/utils/api';
+
 const ProtectedRoute = () => {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
 
@@ -15,7 +17,7 @@ const ProtectedRoute = () => {
 
       try {
         // Optionally, verify the token by calling a protected endpoint
-        const response = await fetch('/api/auth/me', {
+        const response = await fetchWithAuth('/api/auth/me', {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (response.ok) {

@@ -158,7 +158,7 @@ const VoiceChat: React.FC = () => {
   const saveMessage = async (role: string, text: string) => {
     if (!conversationIdRef.current) return;
     try {
-      const response = await fetch(
+      const response = await fetchWithAuth(
         `/api/conversations/conversation/${conversationIdRef.current}/save_message`,
         {
           method: "POST",
@@ -182,7 +182,7 @@ const VoiceChat: React.FC = () => {
       const userId = await fetchUserId();
       const practiceCaseId = parseInt(id as string, 10);
   
-      const response = await fetch("/api/conversations/conversation/start", {
+      const response = await fetchWithAuth("/api/conversations/conversation/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, practice_case_id: practiceCaseId }),
@@ -240,7 +240,7 @@ const VoiceChat: React.FC = () => {
         setShowConversationArea(false);
         setIsWaitingForFeedback(true);
         try {
-          const response = await fetch(
+          const response = await fetchWithAuth(
             `/api/conversations/conversation/${conversationIdRef.current}/end`,
             { method: "POST" }
           );
@@ -273,7 +273,7 @@ const VoiceChat: React.FC = () => {
     // ✅ Ensure conversationIdRef.current exists before making a request
     if (conversationIdRef.current) {
       try {
-        const response = await fetch(`/api/conversations/conversation/${conversationIdRef.current}/end`, {
+        const response = await fetchWithAuth(`/api/conversations/conversation/${conversationIdRef.current}/end`, {
           method: "POST",
         });
   

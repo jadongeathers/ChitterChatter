@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+import { fetchWithAuth } from "@/utils/api";
+
 const Register = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -20,7 +22,7 @@ const Register = () => {
   const verifyEmail = async () => {
     try {
       setError("");
-      const response = await fetch("/api/auth/verify-email", {
+      const response = await fetchWithAuth("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -57,7 +59,7 @@ const Register = () => {
     }
 
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await fetchWithAuth("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

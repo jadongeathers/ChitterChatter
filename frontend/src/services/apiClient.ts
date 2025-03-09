@@ -1,8 +1,10 @@
+import { fetchWithAuth } from "@/utils/api";
+
 export const apiClient = {
   createSession: async (userId: number, practiceCaseId: number): Promise<{ client_secret: string; session_id: string }> => {
     try {
       // Send a POST request to the backend to create a session
-      const response = await fetch("/api/chatbot/session", {
+      const response = await fetchWithAuth("/api/chatbot/session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
