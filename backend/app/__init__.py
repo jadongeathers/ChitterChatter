@@ -31,7 +31,7 @@ def create_app():
     
     # In production, add your Vercel frontend URL
     if os.environ.get("FLASK_ENV") == "production":
-        production_frontend = os.environ.get("FRONTEND_URL", "https://your-frontend-domain.vercel.app")
+        production_frontend = os.environ.get("FRONTEND_URL", "https://chitterchatter.app")
         cors_origins.append(production_frontend)
     
     CORS(app, resources={r"/*": {"origins": cors_origins}})
