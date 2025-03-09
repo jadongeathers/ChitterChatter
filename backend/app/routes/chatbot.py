@@ -128,7 +128,6 @@ def proxy_openai_realtime():
             "Content-Type": "application/sdp",
         }
 
-        # Forward the request to OpenAI
         openai_response = requests.post(
             "https://api.openai.com/v1/realtime",
             headers=headers,
@@ -138,22 +137,26 @@ def proxy_openai_realtime():
         # Log response for debugging
         current_app.logger.info(f"OpenAI API response: {openai_response.status_code}, {openai_response.text}")
 
-        # Check if OpenAI returned a valid response
-        if openai_response.status_code != 200:
+        # Check if OpenAI returned an unexpected status (should be 200)
+        if openai_response.status_code not in [200, 201]:  # Allow 201 but fix it
             return jsonify({
                 "error": "Failed to fetch OpenAI API",
                 "status": openai_response.status_code,
                 "details": openai_response.text
             }), openai_response.status_code
 
-        # Ensure the response is a valid SDP
-        response_text = openai_response.text.strip()
-        if not response_text.startswith("v="):
-            current_app.logger.error("Invalid SDP response from OpenAI")
+        # Extract text response and ensure it is valid SDP
+        sdp_response = openai_response.text.strip()
+
+        # Ensure the response starts with `v=` (valid SDP format)
+        if not sdp_response.startswith("v="):
+            current_app.logger.error(f"Invalid SDP response from OpenAI: {sdp_response[:100]}")
             return jsonify({"error": "Invalid SDP response from OpenAI"}), 500
 
-        return response_text, 200
+        # Force HTTP 200 even if OpenAI sent 201
+        return sdp_response, 200  
 
     except Exception as e:
         current_app.logger.error(f"Error proxying OpenAI: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
+
