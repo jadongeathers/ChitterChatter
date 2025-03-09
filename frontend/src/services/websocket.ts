@@ -110,6 +110,9 @@ export const setupWebRTCConnection = async (
       throw new Error("Failed to create SDP offer");
     }
 
+    // Before sending the offer
+    console.log("SDP being sent:", offer.sdp);
+
     const response = await fetchWithAuth("/api/chatbot/realtime", {
       method: "POST",
       headers: {
