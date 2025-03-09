@@ -22,12 +22,11 @@ def create_app():
     db.init_app(app) 
     jwt.init_app(app)
     
-    CORS(app, origins=[
-        "https://jadongeathers-projects.vercel.app",
+    CORS(app, resources={r"/api/*": {"origins": [
         "https://chitterchatter.app",
         "https://www.chitterchatter.app",
         "http://localhost:3000"
-    ], supports_credentials=True)
+    ]}}, supports_credentials=True)
     
     migrate.init_app(app, db)
 

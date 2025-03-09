@@ -8,6 +8,8 @@ from app.services.voice_service import VoiceService
 from pathlib import Path
 from werkzeug.exceptions import NotFound
 
+# Import environment variables
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 chatbot = Blueprint("chatbot", __name__)
 voice_service = VoiceService()
@@ -110,14 +112,6 @@ def start_conversation():
         db.session.rollback()
         return jsonify({"error": "Failed to start conversation"}), 500
 
-
-import os
-import requests
-from flask import Blueprint, request, jsonify, current_app
-
-chatbot = Blueprint("chatbot", __name__)
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 @chatbot.route("/realtime", methods=["POST"])
 def proxy_openai_realtime():
