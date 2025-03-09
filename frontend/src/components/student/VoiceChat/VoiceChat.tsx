@@ -192,14 +192,9 @@ const VoiceChat: React.FC = () => {
       if (!response.ok) throw new Error(data.error || "Failed to start conversation");
   
       conversationIdRef.current = data.conversation_id;
-      
-      // Get both client_secret and session_id from createSession
-      const { client_secret, session_id } = await apiClient.createSession(userId, practiceCaseId);
-      
-      // Pass both to setupWebRTCConnection
+      const { client_secret } = await apiClient.createSession(userId, practiceCaseId);
       const { pc: peerConnection, dataChannel, localStream: stream } = await setupWebRTCConnection(
         client_secret,
-        session_id, // Add the session_id parameter here
         handleMessage,
         (stream) => setRemoteStream(stream)
       );

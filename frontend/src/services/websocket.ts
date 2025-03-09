@@ -1,7 +1,8 @@
 // websocket.ts
+import { fetchWithAuth } from "@/utils/api";
 
 interface MessageCallback {
-  (message: { type: string; text: string; is_final?: boolean }): void;
+  (message: { type: string; text: string; is_final?: boolean; is_speaking?: boolean }): void;
 }
 
 interface OpenAIMessage {
@@ -24,7 +25,6 @@ interface OpenAIMessage {
 
 export const setupWebRTCConnection = async (
   clientSecret: string,
-  sessionId: string,
   onMessage: MessageCallback,
   onRemoteStream: (stream: MediaStream) => void
 ): Promise<{ pc: RTCPeerConnection; dataChannel: RTCDataChannel, localStream: MediaStream }> => {
@@ -34,8 +34,7 @@ export const setupWebRTCConnection = async (
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
 
-    // Instead of creating and appending an audio element,
-    // we use the onRemoteStream callback.
+    // Handle incoming audio stream from OpenAI
     pc.ontrack = (event) => {
       console.log("Received audio track");
       if (event.streams && event.streams[0]) {
@@ -95,6 +94,23 @@ export const setupWebRTCConnection = async (
             is_final: true,
           });
         }
+        
+        // Handle speaking state
+        if (message.type === "response.output_audio.speaking") {
+          onMessage({
+            type: "assistant",
+            text: "",
+            is_speaking: true
+          });
+        }
+        
+        if (message.type === "response.output_audio.speaking_done") {
+          onMessage({
+            type: "assistant",
+            text: "",
+            is_speaking: false
+          });
+        }
       } catch (err) {
         console.error("❌ Error parsing message:", err);
       }
@@ -108,70 +124,38 @@ export const setupWebRTCConnection = async (
       throw new Error("Failed to create SDP offer");
     }
 
-    // Before sending the offer
-    console.log("SDP being sent:", offer.sdp);
+    // Direct connection to OpenAI's Realtime API
+    // This is the correct URL format according to OpenAI's documentation
+    const baseUrl = "https://api.openai.com/v1/realtime";
+    const model = "gpt-4o-realtime-preview-2024-12-17";
+    
+    console.log(`Connecting to ${baseUrl}?model=${model}`);
+    console.log("SDP offer ready to send:", offer.sdp.substring(0, 100) + "...");
 
-    // Connect to the WebSocket with the session ID
-    const wsUrl = `wss://api.openai.com/v1/realtime/sessions/${sessionId}/ws`;
-    console.log("Connecting to WebSocket:", wsUrl);
-    
-    const ws = new WebSocket(wsUrl);
-    
-    // Create a promise to handle the WebSocket connection and SDP exchange
-    const connectionPromise = new Promise<void>((resolve, reject) => {
-      // Set timeout for connection
-      const connectionTimeout = setTimeout(() => {
-        reject(new Error("WebSocket connection timeout"));
-      }, 10000);
-      
-      ws.onopen = () => {
-        console.log("WebSocket connection opened");
-        clearTimeout(connectionTimeout);
-        
-        // Send the SDP offer over the WebSocket
-        ws.send(JSON.stringify({
-          type: "offer",
-          sdp: offer.sdp
-        }));
-      };
-      
-      ws.onmessage = async (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("WebSocket message:", data);
-          
-          if (data.type === "answer" && data.sdp) {
-            const answer: RTCSessionDescriptionInit = {
-              type: "answer",
-              sdp: data.sdp
-            };
-            await pc.setRemoteDescription(answer);
-            console.log("Remote description set with answer from WebSocket");
-            resolve();
-          }
-        } catch (err) {
-          console.error("Error handling WebSocket message:", err);
-          reject(err);
-        }
-      };
-      
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        clearTimeout(connectionTimeout);
-        reject(error);
-      };
-      
-      ws.onclose = (event) => {
-        console.log(`WebSocket closed with code ${event.code} and reason ${event.reason}`);
-        if (connectionTimeout) {
-          clearTimeout(connectionTimeout);
-          reject(new Error(`WebSocket closed: ${event.reason}`));
-        }
-      };
+    const response = await fetch(`${baseUrl}?model=${model}`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${clientSecret}`,
+        "Content-Type": "application/sdp",
+      },
+      body: offer.sdp,
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenAI API error response:", errorText);
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const answerSdp = await response.text();
+    console.log("Received SDP answer:", answerSdp.substring(0, 100) + "...");
     
-    // Wait for the connection to be established
-    await connectionPromise;
+    const answer: RTCSessionDescriptionInit = {
+      type: "answer",
+      sdp: answerSdp,
+    };
+
+    await pc.setRemoteDescription(answer);
     console.log("Connection established");
 
     return { pc, dataChannel, localStream };
