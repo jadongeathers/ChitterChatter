@@ -115,48 +115,34 @@ def start_conversation():
 
 @chatbot.route("/realtime", methods=["POST"])
 def proxy_openai_realtime():
-    """
-    Proxy OpenAI Realtime API through the backend.
-    """
+    # Get the data from the request
+    content_type = request.headers.get('Content-Type')
+    
+    # Verify authorization in your backend
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not validate_auth_token(auth_header):
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    # Forward the request to OpenAI
+    openai_url = "https://api.openai.com/v1/realtime"
+    openai_headers = {
+        "Authorization": f"Bearer {os.environ.get('OPENAI_API_KEY')}",
+        "Content-Type": content_type
+    }
+    
     try:
-        if not OPENAI_API_KEY:
-            current_app.logger.error("OpenAI API key is missing")
-            return jsonify({"error": "OpenAI API key is missing"}), 500
-
-        headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/sdp",
-        }
-
-        openai_response = requests.post(
-            "https://api.openai.com/v1/realtime",
-            headers=headers,
-            data=request.data
+        response = requests.post(
+            openai_url,
+            headers=openai_headers,
+            data=request.get_data(),
+            stream=True
         )
-
-        # Log response for debugging
-        current_app.logger.info(f"OpenAI API response: {openai_response.status_code}, {openai_response.text}")
-
-        # Check if OpenAI returned an unexpected status (should be 200)
-        if openai_response.status_code not in [200, 201]:  # Allow 201 but fix it
-            return jsonify({
-                "error": "Failed to fetch OpenAI API",
-                "status": openai_response.status_code,
-                "details": openai_response.text
-            }), openai_response.status_code
-
-        # Extract text response and ensure it is valid SDP
-        sdp_response = openai_response.text.strip()
-
-        # Ensure the response starts with `v=` (valid SDP format)
-        if not sdp_response.startswith("v="):
-            current_app.logger.error(f"Invalid SDP response from OpenAI: {sdp_response[:100]}")
-            return jsonify({"error": "Invalid SDP response from OpenAI"}), 500
-
-        # Force HTTP 200 even if OpenAI sent 201
-        return sdp_response, 200  
-
+        
+        # Return the response from OpenAI to the client
+        return Response(
+            response.iter_content(chunk_size=1024),
+            status=response.status_code,
+            content_type=response.headers.get('Content-Type')
+        )
     except Exception as e:
-        current_app.logger.error(f"Error proxying OpenAI: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
-
+        return jsonify({"error": str(e)}), 500
