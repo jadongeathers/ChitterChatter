@@ -111,25 +111,39 @@ def start_conversation():
         return jsonify({"error": "Failed to start conversation"}), 500
 
 
+import os
+import requests
+from flask import Blueprint, request, jsonify, current_app
+
+chatbot = Blueprint("chatbot", __name__)
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 @chatbot.route("/realtime", methods=["POST"])
 def proxy_openai_realtime():
     """
-    Proxy the OpenAI Realtime API through the backend to bypass CORS.
+    Proxy OpenAI Realtime API through the backend.
     """
     try:
-        openai_api_key = os.getenv("OPENAI_API_KEY")  # Load API key from environment variables
-
-        if not openai_api_key:
+        if not OPENAI_API_KEY:
             return jsonify({"error": "OpenAI API key is missing"}), 500
 
         headers = {
-            "Authorization": f"Bearer {openai_api_key}",
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
             "Content-Type": "application/sdp",
         }
 
-        # Forward the request to OpenAI
-        openai_response = requests.post("https://api.openai.com/v1/realtime", headers=headers, data=request.data)
+        # Forward request to OpenAI
+        openai_response = requests.post(
+            "https://api.openai.com/v1/realtime",
+            headers=headers,
+            data=request.data
+        )
 
+        # Log response details
+        current_app.logger.info(f"OpenAI API response: {openai_response.status_code}, {openai_response.text}")
+
+        # If OpenAI request fails, return error
         if openai_response.status_code != 200:
             return jsonify({
                 "error": "Failed to fetch OpenAI API",
@@ -137,7 +151,7 @@ def proxy_openai_realtime():
                 "details": openai_response.text
             }), openai_response.status_code
 
-        # Forward the response back to the frontend
+        # Forward valid OpenAI response
         return openai_response.text, openai_response.status_code
 
     except Exception as e:
