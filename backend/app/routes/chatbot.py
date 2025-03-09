@@ -120,6 +120,7 @@ def proxy_openai_realtime():
     """
     try:
         if not OPENAI_API_KEY:
+            current_app.logger.error("OpenAI API key is missing")
             return jsonify({"error": "OpenAI API key is missing"}), 500
 
         headers = {
@@ -127,17 +128,17 @@ def proxy_openai_realtime():
             "Content-Type": "application/sdp",
         }
 
-        # Forward request to OpenAI
+        # Forward the request to OpenAI
         openai_response = requests.post(
             "https://api.openai.com/v1/realtime",
             headers=headers,
             data=request.data
         )
 
-        # Log response details
+        # Log response for debugging
         current_app.logger.info(f"OpenAI API response: {openai_response.status_code}, {openai_response.text}")
 
-        # If OpenAI request fails, return error
+        # Check if OpenAI returned a valid response
         if openai_response.status_code != 200:
             return jsonify({
                 "error": "Failed to fetch OpenAI API",
@@ -145,10 +146,14 @@ def proxy_openai_realtime():
                 "details": openai_response.text
             }), openai_response.status_code
 
-        # Forward valid OpenAI response
-        return openai_response.text, openai_response.status_code
+        # Ensure the response is a valid SDP
+        response_text = openai_response.text.strip()
+        if not response_text.startswith("v="):
+            current_app.logger.error("Invalid SDP response from OpenAI")
+            return jsonify({"error": "Invalid SDP response from OpenAI"}), 500
+
+        return response_text, 200
 
     except Exception as e:
         current_app.logger.error(f"Error proxying OpenAI: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
-
