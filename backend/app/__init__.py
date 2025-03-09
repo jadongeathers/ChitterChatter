@@ -23,7 +23,11 @@ def create_app():
     jwt.init_app(app)
     
     # Configure CORS based on environment
-    cors_origins = ["http://localhost:3000"]  # Development frontend URL
+    cors_origins = [
+        "https://chitterchatter-mfknk4adl-jadongeathers-projects.vercel.app",
+        "https://chitterchatter.app",  # Production domain
+        "http://localhost:3000",       # Local development
+    ]
     
     # In production, add your Vercel frontend URL
     if os.environ.get("FLASK_ENV") == "production":
