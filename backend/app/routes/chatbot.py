@@ -115,34 +115,21 @@ def start_conversation():
 
 @chatbot.route("/realtime", methods=["POST"])
 def proxy_openai_realtime():
-    # Get the data from the request
-    content_type = request.headers.get('Content-Type')
-    
-    # Verify authorization in your backend
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not validate_auth_token(auth_header):
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    # Forward the request to OpenAI
-    openai_url = "https://api.openai.com/v1/realtime"
-    openai_headers = {
-        "Authorization": f"Bearer {os.environ.get('OPENAI_API_KEY')}",
-        "Content-Type": content_type
-    }
-    
+    """
+    Debug endpoint for realtime API
+    """
     try:
-        response = requests.post(
-            openai_url,
-            headers=openai_headers,
-            data=request.get_data(),
-            stream=True
+        # Log that this endpoint was accessed
+        current_app.logger.warning(
+            "The /api/chatbot/realtime endpoint was accessed, but this should not be used. "
+            "SDP exchange should happen over WebSocket directly with OpenAI."
         )
         
-        # Return the response from OpenAI to the client
-        return Response(
-            response.iter_content(chunk_size=1024),
-            status=response.status_code,
-            content_type=response.headers.get('Content-Type')
-        )
+        # Return a helpful error message
+        return jsonify({
+            "error": "This endpoint is not intended for direct SDP exchange. "
+            "WebRTC connections should be established using the WebSocket URL from session creation."
+        }), 400
     except Exception as e:
+        current_app.logger.error(f"Error in realtime proxy: {str(e)}")
         return jsonify({"error": str(e)}), 500

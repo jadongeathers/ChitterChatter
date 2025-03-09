@@ -1,3 +1,4 @@
+// apiClient.ts
 import { fetchWithAuth } from "@/utils/api";
 
 export const apiClient = {
@@ -10,8 +11,8 @@ export const apiClient = {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          user_id: userId,  // ✅ Pass user_id
-          practice_case_id: practiceCaseId,  // ✅ Pass practice_case_id
+          user_id: userId,
+          practice_case_id: practiceCaseId,
         }),
       });
 
@@ -28,4 +29,20 @@ export const apiClient = {
       throw error;
     }
   },
+  
+  endSession: async (sessionId: string): Promise<void> => {
+    try {
+      const response = await fetchWithAuth(`/api/chatbot/session/${sessionId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to end session: ${errorText}`);
+      }
+    } catch (error) {
+      console.error("Error ending session:", error);
+      throw error;
+    }
+  }
 };
