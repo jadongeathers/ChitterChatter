@@ -24,7 +24,7 @@ def create_app():
     
     # Configure CORS based on environment
     cors_origins = [
-        "https://chitterchatter-mfknk4adl-jadongeathers-projects.vercel.app",
+        "*.jadongeathers-projects.vercel.app",
         "https://chitterchatter.app",  # Production domain
         "http://localhost:3000",       # Local development
     ]
