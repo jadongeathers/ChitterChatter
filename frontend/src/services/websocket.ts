@@ -110,7 +110,7 @@ export const setupWebRTCConnection = async (
       throw new Error("Failed to create SDP offer");
     }
 
-    const response = await fetchWithAuth("https://api.openai.com/v1/realtime", {
+    const response = await fetchWithAuth("/api/chatbot/realtime", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${clientSecret}`,

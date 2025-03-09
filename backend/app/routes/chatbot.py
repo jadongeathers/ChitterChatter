@@ -110,3 +110,37 @@ def start_conversation():
         db.session.rollback()
         return jsonify({"error": "Failed to start conversation"}), 500
 
+
+@chatbot.route("/realtime", methods=["POST"])
+def proxy_openai_realtime():
+    """
+    Proxy the OpenAI Realtime API through the backend to bypass CORS.
+    """
+    try:
+        openai_api_key = os.getenv("OPENAI_API_KEY")  # Load API key from environment variables
+
+        if not openai_api_key:
+            return jsonify({"error": "OpenAI API key is missing"}), 500
+
+        headers = {
+            "Authorization": f"Bearer {openai_api_key}",
+            "Content-Type": "application/sdp",
+        }
+
+        # Forward the request to OpenAI
+        openai_response = requests.post("https://api.openai.com/v1/realtime", headers=headers, data=request.data)
+
+        if openai_response.status_code != 200:
+            return jsonify({
+                "error": "Failed to fetch OpenAI API",
+                "status": openai_response.status_code,
+                "details": openai_response.text
+            }), openai_response.status_code
+
+        # Forward the response back to the frontend
+        return openai_response.text, openai_response.status_code
+
+    except Exception as e:
+        current_app.logger.error(f"Error proxying OpenAI: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
