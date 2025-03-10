@@ -82,21 +82,21 @@ def login():
         if not all(k in data for k in ["email", "password"]):
             return jsonify({"error": "Missing email or password"}), 400
 
-        # ✅ Fetch user by email
+        # Fetch user by email
         user = next((u for u in User.query.all() if u.email == data["email"]), None)
 
         if not user or not check_password_hash(user.password_hash, data["password"]):
             return jsonify({"error": "Invalid email or password"}), 401
 
-        # ✅ Check if account is active
+        # Check if account is active
         if not user.is_active:
             return jsonify({"error": "This account has been deactivated"}), 403
 
-        # ✅ Ensure user is registered before proceeding
+        # Ensure user is registered before proceeding
         if not user.is_registered:
             return jsonify({"error": "User has not completed registration"}), 403
 
-        # ✅ Check access dates
+        # Check access dates
         now = datetime.now(timezone.utc)
 
         if user.access_group == "A":
@@ -111,7 +111,7 @@ def login():
         else:
             return jsonify({"error": "Invalid access group"}), 500
 
-        # ✅ Restrict login if outside the allowed period
+        # Restrict login if outside the allowed period
         if start_date and end_date:
             if now < start_date:
                 return jsonify({
@@ -124,26 +124,50 @@ def login():
                     "message": f"Your access ended on {end_date.strftime('%B %d, %Y')}. Contact your administrator if you need further access."
                 }), 403
 
-        # ✅ Update last login time
+        # Update last login time
         user.last_login = now
         db.session.commit()
 
-        # ✅ Generate JWT token
+        # Generate JWT token
         access_token = create_access_token(identity=str(user.id))
+
+        # Check if user has consented
+        has_consented = getattr(user, 'has_consented', False)
+        
+        if not has_consented and not user.is_master:
+            return jsonify({
+                "access_token": access_token,
+                "user": user.to_dict() if hasattr(user, 'to_dict') else {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "is_student": user.is_student,
+                    "access_group": user.access_group,
+                    "is_master": user.is_master,
+                    "is_active": user.is_active,
+                    "profile_picture": user.profile_picture,
+                    "profile_picture_url": f"/images/profile-icons/{user.profile_picture}"
+                },
+                "needs_consent": True
+            }), 200
 
         return jsonify({
             "access_token": access_token,
-            "user": {
+            "user": user.to_dict() if hasattr(user, 'to_dict') else {
                 "id": user.id,
-                "email": user.email,  # ✅ Decrypted via property
+                "email": user.email,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "is_student": user.is_student,
                 "access_group": user.access_group,
                 "is_master": user.is_master,
                 "is_active": user.is_active,
-            }
-        })
+                "profile_picture": user.profile_picture,
+                "profile_picture_url": f"/images/profile-icons/{user.profile_picture}"
+            },
+            "needs_consent": False
+        }), 200
 
     except Exception as e:
         current_app.logger.error(f"Login error: {str(e)}")
@@ -238,6 +262,7 @@ def verify_email():
             if user.is_registered:
                 return jsonify({"error": "Email already registered"}), 409
 
+            # Only set the access_group if it's not already set
             if user.access_group is None:  # Ensure group is only assigned once
                 if not user.is_student:
                     # Assign "All" access group to non-students (instructors)
@@ -259,10 +284,14 @@ def verify_email():
                     user.access_group = access_group
                 
                 db.session.commit()
+                current_app.logger.info(f"Access group for {email} assigned: {user.access_group}")
+            else:
+                current_app.logger.info(f"User {email} already has access group: {user.access_group}")
 
             return jsonify({
                 "message": "Email verified, proceed to registration",
-                "access_group": user.access_group
+                "access_group": user.access_group,
+                "is_student": user.is_student
             }), 200
 
         return jsonify({"error": "Institutional access required"}), 403
@@ -409,3 +438,37 @@ def update_profile_picture():
         current_app.logger.error(f"Profile picture update error: {str(e)}")
         db.session.rollback()
         return jsonify({"error": "Failed to update profile picture"}), 500
+    
+
+@auth.route('/record-consent', methods=['POST'])
+def record_consent():
+    """Record user consent for research participation."""
+    try:
+        data = request.get_json()
+        
+        if not all(k in data for k in ['email', 'has_consented']):
+            return jsonify({"error": "Missing required fields"}), 400
+            
+        # Find user by email
+        user = next((u for u in User.query.all() if u.email == data["email"]), None)
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+            
+        # Update consent information
+        user.has_consented = data['has_consented']
+        if user.has_consented:
+            user.consent_date = datetime.now(timezone.utc)
+            
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Consent recorded successfully",
+            "user_id": user.id,
+            "has_consented": user.has_consented
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Record consent error: {str(e)}")
+        db.session.rollback()
+        return jsonify({"error": "Failed to record consent"}), 500

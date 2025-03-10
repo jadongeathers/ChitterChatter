@@ -100,9 +100,21 @@ const UserListItem: React.FC<UserListItemProps> = ({
             <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
               user.access_group === "A" ? "bg-green-100 text-green-700" :
               user.access_group === "B" ? "bg-yellow-100 text-yellow-700" :
+              user.access_group === "All" ? "bg-indigo-100 text-indigo-700" :
               "bg-red-100 text-red-700"
             }`}>
               Group {user.access_group}
+            </span>
+          )}
+          
+          {/* Consent status badge - only show if has_consented is defined */}
+          {typeof user.has_consented !== 'undefined' && (
+            <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+              user.has_consented 
+                ? "bg-teal-100 text-teal-700" 
+                : "bg-amber-100 text-amber-700"
+            }`}>
+              {user.has_consented ? "Consented" : "No Consent"}
             </span>
           )}
         </div>
@@ -110,12 +122,15 @@ const UserListItem: React.FC<UserListItemProps> = ({
         <div className="flex items-center gap-4">
           <div className="text-gray-500">{user.email}</div>
           
-          <UserActionsMenu 
-            user={user}
-            onEditAccessGroup={onEditAccessGroup}
-            onEditUser={onEditUser}
-            onDeleteUser={onDeleteUser}
-          />
+          {/* Wrapper with relative positioning for the menu */}
+          <div className="relative z-10">
+            <UserActionsMenu 
+              user={user}
+              onEditAccessGroup={onEditAccessGroup}
+              onEditUser={onEditUser}
+              onDeleteUser={onDeleteUser}
+            />
+          </div>
         </div>
       </div>
     </li>

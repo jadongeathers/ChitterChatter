@@ -7,5 +7,6 @@ from .conversation import Conversation
 from .message import Message
 from .practice_case import PracticeCase
 from .feedback import SystemFeedback
+from .survey import SurveyRedirect
 
-__all__ = ["User", "Conversation", "Message", "PracticeCase", "SystemFeedback"]
+__all__ = ["User", "Conversation", "Message", "PracticeCase", "SystemFeedback", "SurveyRedirect"]

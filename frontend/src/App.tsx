@@ -117,6 +117,7 @@ function App() {
 
         
           {/* Common Routes */}
+          <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="practice/*" element={<Practice />} />
           <Route path="progress" element={<Progress />} />
           <Route path="settings" element={<Settings />} />

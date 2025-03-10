@@ -97,7 +97,7 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
   };
 
   const studentMenuItems = [
-    { icon: Home, label: "Dashboard", path: "/" },
+    { icon: Home, label: "Dashboard", path: "/dashboard" },
     { icon: MessageCircle, label: "Practice", path: "/practice" },
     { icon: BarChart2, label: "Progress", path: "/progress" },
     { icon: Settings, label: "Settings", path: "/settings" },
@@ -105,7 +105,7 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
   ];
 
   const instructorMenuItems = [
-    { icon: Home, label: "Dashboard", path: "/instructor" },
+    { icon: Home, label: "Dashboard", path: "/instructor/dashboard" },
     { icon: FileText, label: "Lessons", path: "/instructor/lessons" },
     { icon: Users, label: "Students", path: "/instructor/students" },
     { icon: BarChart2, label: "Analytics", path: "/instructor/analytics" },

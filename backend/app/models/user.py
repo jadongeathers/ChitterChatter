@@ -27,6 +27,9 @@ class User(db.Model):
     is_student = db.Column(db.Boolean, default=True)
     is_master = db.Column(db.Boolean, default=False)
     is_registered = db.Column(db.Boolean, default=False)
+
+    has_consented = db.Column(db.Boolean, default=False)
+    consent_date = db.Column(db.DateTime(timezone=True), nullable=True)
     
     # Fields for settings page
     is_active = db.Column(db.Boolean, default=True)
@@ -114,5 +117,7 @@ class User(db.Model):
             "is_active": self.is_active,
             "email_notifications": self.email_notifications,
             "profile_picture": self.profile_picture,
-            "profile_picture_url": self.profile_picture_url
+            "profile_picture_url": self.profile_picture_url,
+            "has_consented": self.has_consented,
+            "consent_date": self.consent_date.isoformat() if self.consent_date else None,
         }

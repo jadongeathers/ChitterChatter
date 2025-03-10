@@ -20,7 +20,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
     institution: user.institution || '',
     class_name: user.class_name || '',
     section: user.section || '',
-    is_student: user.is_student
+    is_student: user.is_student,
+    has_consented: user.has_consented || false // Add consent field
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,6 +58,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       
     } catch (error) {
       console.error('Error updating user:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -70,7 +72,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       formData.institution !== user.institution ||
       formData.class_name !== user.class_name ||
       formData.section !== user.section ||
-      formData.is_student !== user.is_student
+      formData.is_student !== user.is_student ||
+      formData.has_consented !== user.has_consented // Check for consent changes
     );
   };
 
@@ -168,22 +171,43 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="is_student"
-              name="is_student"
-              checked={formData.is_student}
-              onChange={handleChange}
-              className="h-4 w-4"
-              disabled={isSubmitting}
-            />
-            <label className="text-sm font-medium" htmlFor="is_student">
-              Is Student
-            </label>
-            <span className="text-xs text-gray-500">
-              (Unchecked means instructor)
-            </span>
+          <div className="flex flex-col space-y-2">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="is_student"
+                name="is_student"
+                checked={formData.is_student}
+                onChange={handleChange}
+                className="h-4 w-4"
+                disabled={isSubmitting}
+              />
+              <label className="text-sm font-medium" htmlFor="is_student">
+                Is Student
+              </label>
+              <span className="text-xs text-gray-500">
+                (Unchecked means instructor)
+              </span>
+            </div>
+            
+            {/* Add consent checkbox */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="has_consented"
+                name="has_consented"
+                checked={formData.has_consented}
+                onChange={handleChange}
+                className="h-4 w-4"
+                disabled={isSubmitting}
+              />
+              <label className="text-sm font-medium" htmlFor="has_consented">
+                Has consented to research participation
+              </label>
+              <span className="text-xs text-gray-500">
+                (Required for app access)
+              </span>
+            </div>
           </div>
         </div>
         

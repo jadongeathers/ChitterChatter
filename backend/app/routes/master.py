@@ -169,11 +169,13 @@ def add_student():
         is_student = data.get("is_student", True)
         first_name = data.get("first_name", "")
         last_name = data.get("last_name", "")
+        access_group = data.get("access_group")
 
         # ✅ Log extracted fields
         current_app.logger.info(f"Extracted data - Institution: {institution}, Class: {class_name}, "
                                 f"Section: {section}, Email: {email}, Is Student: {is_student}, "
-                                f"First Name: {first_name}, Last Name: {last_name}")
+                                f"First Name: {first_name}, Last Name: {last_name}, "
+                                f"Access Group: {access_group}")
 
         if not institution or not class_name or not section or not email:
             current_app.logger.error("Missing required fields.")
@@ -195,8 +197,15 @@ def add_student():
         # Use a placeholder password since the column is NOT NULL
         dummy_password = "placeholder_will_need_reset"
         
-        # Set appropriate access group for instructors
-        access_group = "All" if not is_student else None
+        # Make sure non-students always have "All" access
+        if not is_student and access_group != "All":
+            access_group = "All"
+            current_app.logger.info("Setting access_group to 'All' for instructor")
+        
+        # Make sure access_group is valid for students
+        if is_student and access_group not in ["A", "B", "All"]:
+            access_group = "A"  # Default to group A if invalid
+            current_app.logger.info("Invalid access_group for student, defaulting to 'A'")
         
         new_user = User(
             email_encrypted=encrypted_email,
@@ -208,11 +217,13 @@ def add_student():
             section=section,
             access_group=access_group,
             is_student=is_student,
-            is_registered=False  # Explicitly mark as not registered
+            is_registered=False,  # Explicitly mark as not registered
+            has_consented=False,  # Explicitly set consent to false for new users
+            consent_date=None
         )
 
         # ✅ Log user creation attempt
-        current_app.logger.info(f"Creating user: ({email}) as {'Student' if is_student else 'Instructor'}.")
+        current_app.logger.info(f"Creating user: ({email}) as {'Student' if is_student else 'Instructor'} with access group {access_group}.")
 
         # ✅ Add user to database
         db.session.add(new_user)

@@ -60,7 +60,7 @@ const MenuItems = ({ items }: { items: any[] }) => {
 
 const UpdatedSidebar = ({ className, currentRole }: SidebarProps) => {
   const studentMenuItems: MenuItem[] = [
-    { icon: Home, label: "Dashboard", path: "/", id: "home" },
+    { icon: Home, label: "Dashboard", path: "/dashboard", id: "home" },
     { icon: MessageCircle, label: "Practice", path: "/practice", id: "practice" },
     { icon: BarChart2, label: "Progress", path: "/progress", id: "progress" },
     { icon: Settings, label: "Settings", path: "/settings", id: "settings" },
@@ -68,7 +68,7 @@ const UpdatedSidebar = ({ className, currentRole }: SidebarProps) => {
   ];
 
   const instructorMenuItems: MenuItem[] = [
-    { icon: Home, label: "Dashboard", path: "/instructor", id: "home" },
+    { icon: Home, label: "Dashboard", path: "/instructor/dashboard", id: "home" },
     { icon: FileText, label: "Lessons", path: "/instructor/lessons", id: "lessons" },
     { icon: Users, label: "Students", path: "/instructor/students", id: "students" },
     { icon: BarChart2, label: "Analytics", path: "/instructor/analytics", id: "analytics" },

@@ -7,6 +7,7 @@ from .instructors import instructors
 from .students import students
 from .master import master
 from .system import system
+from .surveys import surveys
 
 def register_blueprints(app):
     app.register_blueprint(chatbot, url_prefix='/api/chatbot')
@@ -17,3 +18,4 @@ def register_blueprints(app):
     app.register_blueprint(students, url_prefix='/api/students')
     app.register_blueprint(master, url_prefix='/api/master')
     app.register_blueprint(system, url_prefix='/api/system')
+    app.register_blueprint(surveys, url_prefix='/api/surveys')

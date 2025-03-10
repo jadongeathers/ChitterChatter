@@ -1,5 +1,9 @@
 // utils/api.ts
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
+const isDevelopment = import.meta.env.DEV;
+const API_BASE_URL = isDevelopment ? '' : (import.meta.env.VITE_API_URL || '');
+
+// const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem("access_token");
