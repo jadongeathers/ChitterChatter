@@ -126,8 +126,7 @@ const Register = () => {
   
   // New handler for canceling consent
   const handleConsentCancel = () => {
-    // Return to account details step if user cancels consent
-    setCurrentStep(RegistrationStep.ACCOUNT_DETAILS);
+    navigate("/login");  // Redirect to the login page
   };
   
   const renderCurrentStep = () => {
