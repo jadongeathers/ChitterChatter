@@ -131,7 +131,7 @@ function App() {
           <Route path="master/dashboard" element={<MasterDashboard />} />
 
           {/* Instructor Routes */}
-          <Route path="instructor" element={<InstructorDashboard />} />
+          <Route path="instructor/dashboard" element={<InstructorDashboard />} />
           <Route path="instructor/lessons" element={<Lessons />} />
           <Route path="instructor/review/:caseId" element={<ReviewCase />} />
           <Route path="instructor/review/new" element={<ReviewCase isNew />} />
