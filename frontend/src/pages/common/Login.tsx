@@ -244,6 +244,7 @@ const Login = () => {
                   Register here
                 </Link>
               </motion.span>
+              <p className="text-gray-500 text-xs mt-2">Having trouble logging in? Contact jag569@cornell.edu.</p>
             </motion.p>
           </CardContent>
         </Card>
