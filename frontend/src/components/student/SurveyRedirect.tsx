@@ -92,7 +92,7 @@ const SurveyRedirect: React.FC<SurveyRedirectProps> = ({
         <CardContent className="space-y-4">
           <div className="p-4 bg-gray-50 rounded-md text-sm">
             <p className="mb-4">
-              Thank you for agreeing to participate in our research study! As part of the study, we ask that you complete a brief survey before using ChitterChatter.
+              Thank you for agreeing to participate in our research study! We just have three questions to get to know more about you and your language learning journey.
             </p>
 
             <p className="mb-4">

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { fetchWithAuth } from "@/utils/api";
 import ConsentForm from "@/components/common/ConsentForm";
-import SurveyRedirect from "@/components/student/SurveyRedirect";
+import StudentSurvey from "@/components/student/StudentSurvey";
 
 // Enum for registration steps
 enum RegistrationStep {
@@ -35,6 +35,7 @@ const Register = () => {
   const [accessMessage, setAccessMessage] = useState("");
   const [isStudent, setIsStudent] = useState(true); // Default to student
   const [userId, setUserId] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const verifyEmail = async () => {
     try {
@@ -103,6 +104,10 @@ const Register = () => {
         setUserId(data.user_id);
       }
       
+      if (data.access_token) {
+        setAccessToken(data.access_token);
+      }
+      
       // Move to consent form step
       setCurrentStep(RegistrationStep.CONSENT_FORM);
     } catch (err: any) {
@@ -115,18 +120,24 @@ const Register = () => {
     if (isStudent) {
       setCurrentStep(RegistrationStep.SURVEY);
     } else {
+      // Non-student, go directly to final step
       setCurrentStep(RegistrationStep.GROUP_ASSIGNMENT);
     }
   };
   
+  const handleConsentCancel = () => {
+    navigate("/login");  // Redirect to the login page
+  };
+
   const handleSurveyComplete = () => {
     // Move to final step after survey
     setCurrentStep(RegistrationStep.GROUP_ASSIGNMENT);
   };
-  
-  // New handler for canceling consent
-  const handleConsentCancel = () => {
-    navigate("/login");  // Redirect to the login page
+
+  const handleSurveySkip = () => {
+    // Survey is mandatory, so we don't allow skipping
+    // Instead, we display an error
+    setError("You must complete the survey to continue registration.");
   };
   
   const renderCurrentStep = () => {
@@ -221,17 +232,19 @@ const Register = () => {
             onCancel={handleConsentCancel}
           />
         );
-        
+
       case RegistrationStep.SURVEY:
         return (
-          <SurveyRedirect
+          <StudentSurvey
             email={email}
             user={{
-              is_student: isStudent,
+              id: userId ? parseInt(userId) : undefined,
               first_name: firstName,
-              last_name: lastName
+              last_name: lastName,
+              is_student: isStudent
             }}
             onComplete={handleSurveyComplete}
+            onSkip={handleSurveySkip}
           />
         );
         

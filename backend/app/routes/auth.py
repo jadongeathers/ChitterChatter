@@ -96,42 +96,14 @@ def login():
         if not user.is_registered:
             return jsonify({"error": "User has not completed registration"}), 403
 
-        # Check access dates
-        now = datetime.now(timezone.utc)
-
-        if user.access_group == "A":
-            start_date = datetime(2025, 3, 10, 0, 0, 0, tzinfo=timezone.utc)
-            end_date = datetime(2025, 3, 30, 23, 59, 59, tzinfo=timezone.utc)
-        elif user.access_group == "B":
-            start_date = datetime(2025, 4, 7, 0, 0, 0, tzinfo=timezone.utc)
-            end_date = datetime(2025, 4, 27, 23, 59, 59, tzinfo=timezone.utc)
-        elif user.access_group == "All":
-            start_date = None
-            end_date = None  # "All" group has unlimited access
-        else:
-            return jsonify({"error": "Invalid access group"}), 500
-
-        # Restrict login if outside the allowed period
-        if start_date and end_date:
-            if now < start_date:
-                return jsonify({
-                    "error": "Access restricted",
-                    "message": f"Your access starts on {start_date.strftime('%B %d, %Y')}. Please check back later."
-                }), 403
-            elif now > end_date:
-                return jsonify({
-                    "error": "Access restricted",
-                    "message": f"Your access ended on {end_date.strftime('%B %d, %Y')}. Contact your administrator if you need further access."
-                }), 403
-
         # Update last login time
-        user.last_login = now
+        user.last_login = datetime.now(timezone.utc)
         db.session.commit()
 
         # Generate JWT token
         access_token = create_access_token(identity=str(user.id))
 
-        # Check if user has consented
+        # First, check if user has consented
         has_consented = getattr(user, 'has_consented', False)
         
         if not has_consented and not user.is_master:
@@ -147,12 +119,44 @@ def login():
                     "is_master": user.is_master,
                     "is_active": user.is_active,
                     "profile_picture": user.profile_picture,
-                    "profile_picture_url": f"/images/profile-icons/{user.profile_picture}"
+                    "profile_picture_url": f"/images/profile-icons/{user.profile_picture}",
+                    "has_completed_survey": user.has_completed_survey
                 },
                 "needs_consent": True
             }), 200
 
-        return jsonify({
+        # Second, check if they need to complete the survey (frontend will handle this check)
+        # Just include the has_completed_survey flag in the response
+
+        # Only now check access dates
+        now = datetime.now(timezone.utc)
+
+        if user.access_group == "A":
+            start_date = datetime(2025, 3, 10, 0, 0, 0, tzinfo=timezone.utc)
+            end_date = datetime(2025, 3, 30, 23, 59, 59, tzinfo=timezone.utc)
+        elif user.access_group == "B":
+            start_date = datetime(2025, 4, 7, 0, 0, 0, tzinfo=timezone.utc)
+            end_date = datetime(2025, 4, 27, 23, 59, 59, tzinfo=timezone.utc)
+        elif user.access_group == "All":
+            start_date = None
+            end_date = None  # "All" group has unlimited access
+        else:
+            return jsonify({"error": "Invalid access group"}), 500
+
+        # Restrict login if outside the allowed period, but only if they've already consented and completed the survey
+        access_restricted = False
+        access_message = ""
+        
+        if start_date and end_date:
+            if now < start_date:
+                access_restricted = True
+                access_message = f"Your access starts on {start_date.strftime('%B %d, %Y')}. We'll remind you then!"
+            elif now > end_date:
+                access_restricted = True
+                access_message = f"Your access ended on {end_date.strftime('%B %d, %Y')}. Contact jag569@cornell.edu if you have any questions."
+
+        # Return the full response with access restriction info if applicable
+        response = {
             "access_token": access_token,
             "user": user.to_dict() if hasattr(user, 'to_dict') else {
                 "id": user.id,
@@ -164,10 +168,18 @@ def login():
                 "is_master": user.is_master,
                 "is_active": user.is_active,
                 "profile_picture": user.profile_picture,
-                "profile_picture_url": f"/images/profile-icons/{user.profile_picture}"
+                "profile_picture_url": f"/images/profile-icons/{user.profile_picture}",
+                "has_completed_survey": user.has_completed_survey
             },
             "needs_consent": False
-        }), 200
+        }
+        
+        # Add access restriction info if applicable
+        if access_restricted:
+            response["access_restricted"] = True
+            response["access_message"] = access_message
+        
+        return jsonify(response), 200
 
     except Exception as e:
         current_app.logger.error(f"Login error: {str(e)}")

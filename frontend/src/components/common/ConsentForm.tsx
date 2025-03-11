@@ -85,19 +85,19 @@ const ConsentForm: React.FC<ConsentFormProps> = ({
       return (
         <>
           <p className="mb-4">
-            By using ChitterChatter, you are consenting to participate in a research study to understand how AI-powered tools can enhance language learning.
+            We are envisioning the future of AI-enhanced language learning. By using ChitterChatter, you're helping contribute to the science of language learning!
           </p>
           <p className="mb-4">
             If you participate, you will:
           </p>
           <ul className="list-disc pl-5 mb-4 space-y-1">
-            <li>Complete a short pre-study survey</li>
-            <li>Frequently use the tool for speaking practice</li>
+            <li>Get to work on your language speaking and listening skills</li>
+            <li>Complete a three question pre-study survey</li>
             <li>Complete a short post-study survey</li>
-            <li>Participate in an interview (30 minutes)</li>
+            <li>Optionally participate in an interview (30 minutes)</li>
           </ul>
           <p className="mb-4">
-            Your participation is voluntary, and all data collected will be kept confidential and used only for research purposes.
+            All data collected will be kept confidential and used only for research purposes.
           </p>
         </>
       );
