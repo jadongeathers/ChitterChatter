@@ -256,7 +256,7 @@ const Login = () => {
               )}
             </div>
             
-            <Button onClick={() => navigate('/login')} className="w-full">
+            <Button onClick={() => setShowCompletionThankYou(false)} className="w-full">
               Proceed to Login
             </Button>
           </CardContent>
