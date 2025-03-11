@@ -34,7 +34,9 @@ import { fetchWithAuth } from "@/utils/api";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { User, Shield, Key, Bell, Moon, Trash2 } from "lucide-react";
+import { User, Shield, Key, Bell, Moon, Trash2 } from "lucide-react"; 
+
+import { useNavigate } from "react-router-dom";
 
 // Animation variants
 const containerVariants = {
@@ -89,6 +91,7 @@ interface User {
 
 const Settings: React.FC = () => {
   // Using Sonner toast instead of the deprecated toast component
+  const navigate = useNavigate();
   const [userInfo, setUserInfo] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState(true);
@@ -209,7 +212,7 @@ const Settings: React.FC = () => {
       
       // Redirect to logout or login page after short delay
       setTimeout(() => {
-        window.location.href = "/login";
+        navigate("/login");
       }, 2000);
     } catch (error) {
       console.error("Error deactivating account:", error);

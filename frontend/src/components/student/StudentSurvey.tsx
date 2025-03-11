@@ -8,6 +8,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { fetchWithAuth } from '@/utils/api';
 
+import { useNavigate } from "react-router-dom";
+
+
 type SurveySection = 'confidence' | 'motivation' | 'attitudes';
 type QuestionKey = string; // e.g., 'q1', 'q2', etc.
 type LikertValue = '1' | '2' | '3' | '4' | '5' | '';
@@ -43,6 +46,8 @@ const StudentSurvey: React.FC<StudentSurveyProps> = ({
   const [currentSection, setCurrentSection] = useState<number>(0);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+  const navigate = useNavigate();
+
   
   // Initialize survey responses with empty values
   const [responses, setResponses] = useState<SurveyResponses>({
@@ -210,7 +215,7 @@ const StudentSurvey: React.FC<StudentSurveyProps> = ({
   // Confirm exit - directly navigate to login page
   const confirmExit = () => {
     // Navigate to login page
-    window.location.href = '/login';
+    navigate('/login');
   };
 
   // Cancel exit

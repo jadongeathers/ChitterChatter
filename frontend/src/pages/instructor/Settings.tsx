@@ -36,6 +36,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { User, Shield, Key, Bell, Trash2 } from "lucide-react";
 
+import { useNavigate } from "react-router-dom";
+
 // Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -93,6 +95,7 @@ interface InstructorUser {
 }
 
 const InstructorSettings: React.FC = () => {
+  const navigate = useNavigate();
   const [userInfo, setUserInfo] = useState<InstructorUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState(true);
@@ -213,7 +216,7 @@ const InstructorSettings: React.FC = () => {
       
       // Redirect to logout or login page after short delay
       setTimeout(() => {
-        window.location.href = "/login";
+        navigate("/login");
       }, 2000);
     } catch (error) {
       console.error("Error deactivating account:", error);

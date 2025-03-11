@@ -25,6 +25,7 @@ const Login = () => {
   const [requiredMessage, setRequiredMessage] = useState("");
   const [showCompletionThankYou, setShowCompletionThankYou] = useState(false);
 
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -255,7 +256,7 @@ const Login = () => {
               )}
             </div>
             
-            <Button onClick={() => window.location.href = "/login"} className="w-full">
+            <Button onClick={() => navigate('/login')} className="w-full">
               Proceed to Login
             </Button>
           </CardContent>
