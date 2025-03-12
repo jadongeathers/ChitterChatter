@@ -262,11 +262,8 @@ const VoiceChat: React.FC = () => {
   };
   
   const cancelSession = async () => {
-    // Show ending conversation banner
-    setIsEndingConversation(true);
+    // Note: isEndingConversation is now set directly in the button click handler
     
-    await new Promise(resolve => setTimeout(resolve, 100)); // Ensure UI updates before API call
-
     if (pc) {
       pc.getSenders().forEach((sender) => {
         if (sender.track) sender.track.stop();
@@ -295,11 +292,8 @@ const VoiceChat: React.FC = () => {
       }
     }
     
-    // Add a short delay before navigation to ensure the user sees the banner
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Hide banner before navigation
-    setIsEndingConversation(false);
+    // Add a small delay to ensure user sees the "Ending conversation" message
+    await new Promise(resolve => setTimeout(resolve, 1000));
   
     // ✅ Redirect user based on role
     if (userRole === "instructor") {
@@ -326,6 +320,21 @@ const VoiceChat: React.FC = () => {
         practiceCase={practiceCase}
         onStart={startSession}
       />
+
+      {/* Ending conversation notification - always present in DOM but conditionally visible */}
+      <div className={`fixed inset-0 z-50 bg-black bg-opacity-20 flex items-center justify-center transition-opacity duration-300 ${isEndingConversation ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <Card className="w-full max-w-sm bg-white shadow-lg">
+          <CardContent className="p-6 text-center">
+            <h2 className="text-lg font-semibold mb-2">Ending conversation</h2>
+            <div className="flex justify-center space-x-1 mt-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "600ms" }}></div>
+            </div>
+            <p className="text-gray-500 mt-2">Please wait...</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {isTimeUp ? (
         <Card className="w-full max-w-md mx-auto p-6 text-center">
@@ -402,6 +411,8 @@ const VoiceChat: React.FC = () => {
               <button
                 onClick={() => {
                   setIsStopModalOpen(false);
+                  // Set ending state immediately on button click
+                  setIsEndingConversation(true);
                   cancelSession();
                 }}
                 className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
