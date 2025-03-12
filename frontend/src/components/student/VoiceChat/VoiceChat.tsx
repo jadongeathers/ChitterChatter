@@ -222,6 +222,8 @@ const VoiceChat: React.FC = () => {
   const stopSession = async () => {
     setIsEndingConversation(true);
 
+    await new Promise(resolve => setTimeout(resolve, 100)); // Ensure UI updates before API call
+
     if (pc) {
       pc.getSenders().forEach((sender) => {
         if (sender.track) sender.track.stop();
