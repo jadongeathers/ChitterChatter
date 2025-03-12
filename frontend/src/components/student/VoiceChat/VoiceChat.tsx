@@ -311,14 +311,9 @@ const VoiceChat: React.FC = () => {
     <>
       <StartSessionDialog
         open={isModalOpen}
-        onOpenChange={(open) => !open && navigate("/practice")}
+        onOpenChange={handleModalClose}
         practiceCase={practiceCase}
-        onStart={() => {
-          setIsModalOpen(false);
-          setIsSessionStarted(true);
-          setTimeElapsed(0);
-          setStatus("Connecting...");
-        }}
+        onStart={startSession}
       />
 
       {isTimeUp ? (
@@ -330,18 +325,18 @@ const VoiceChat: React.FC = () => {
       ) : isWaitingForFeedback ? (
         <Card className="w-full max-w-md mx-auto p-6 text-center">
           <CardContent>
-            <h2 className="text-lg font-semibold">Waiting for feedback...</h2>
+            <h2 className="text-lg font-semibold">Waiting for feedback</h2>
             <span>{loadingDots}</span>
           </CardContent>
         </Card>
       ) : (
-        isSessionStarted && showConversationArea && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: isEndingConversation ? 0 : 1 }} className="min-h-screen flex flex-col items-center justify-center p-6">
+        isSessionStarted && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: isExiting ? 0 : 1 }} className="min-h-screen flex flex-col items-center justify-center p-6">
             <ConversationArea
               currentMessage={currentMessage}
               showHint={showHint}
               onToggleShowHint={() => setShowHint(!showHint)}
-              stopSession={stopSession}
+              stopSession={handleStopClick}
               status={status}
               error={error}
               remoteStream={remoteStream}
@@ -350,7 +345,10 @@ const VoiceChat: React.FC = () => {
               timeElapsed={timeElapsed}
               onTimerUp={stopSession}
               canStop={minReached}
-              onTick={(elapsed) => setTimeElapsed(elapsed)}
+              onTick={(elapsed) => {
+                console.log("VoiceChat received elapsed:", elapsed);
+                setTimeElapsed(elapsed);
+              }}
             />
           </motion.div>
         )
@@ -368,34 +366,6 @@ const VoiceChat: React.FC = () => {
                   <div className="animate-pulse text-gray-500">Processing...</div>
               </motion.div>
           </div>
-      )}
-
-      {isSessionStarted && showConversationArea && (
-        <motion.div
-          initial={{ opacity: 1 }}
-          animate={{ opacity: isExiting ? 0 : 1 }}
-          transition={{ duration: 0.6 }}
-          className="min-h-screen flex flex-col items-center justify-center p-6"
-        >
-          <ConversationArea
-            currentMessage={currentMessage}
-            showHint={showHint}
-            onToggleShowHint={() => setShowHint(!showHint)}
-            stopSession={handleStopClick}
-            status={status}
-            error={error}
-            remoteStream={remoteStream}
-            timerMin={practiceCase?.min_time ?? 30}
-            timerMax={practiceCase?.max_time ?? 300}
-            timeElapsed={timeElapsed}
-            onTimerUp={stopSession}
-            canStop={minReached}
-            onTick={(elapsed) => {
-              console.log("VoiceChat received elapsed:", elapsed);
-              setTimeElapsed(elapsed);
-            }}
-          />
-        </motion.div>
       )}
 
 
