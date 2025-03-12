@@ -311,9 +311,14 @@ const VoiceChat: React.FC = () => {
     <>
       <StartSessionDialog
         open={isModalOpen}
-        onOpenChange={handleModalClose}
+        onOpenChange={(open) => !open && navigate("/practice")}
         practiceCase={practiceCase}
-        onStart={startSession}
+        onStart={() => {
+          setIsModalOpen(false);
+          setIsSessionStarted(true);
+          setTimeElapsed(0);
+          setStatus("Connecting...");
+        }}
       />
 
       {isTimeUp ? (
@@ -325,18 +330,18 @@ const VoiceChat: React.FC = () => {
       ) : isWaitingForFeedback ? (
         <Card className="w-full max-w-md mx-auto p-6 text-center">
           <CardContent>
-            <h2 className="text-lg font-semibold">Waiting for feedback</h2>
+            <h2 className="text-lg font-semibold">Waiting for feedback...</h2>
             <span>{loadingDots}</span>
           </CardContent>
         </Card>
       ) : (
-        isSessionStarted && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: isExiting ? 0 : 1 }} className="min-h-screen flex flex-col items-center justify-center p-6">
+        isSessionStarted && showConversationArea && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: isEndingConversation ? 0 : 1 }} className="min-h-screen flex flex-col items-center justify-center p-6">
             <ConversationArea
               currentMessage={currentMessage}
               showHint={showHint}
               onToggleShowHint={() => setShowHint(!showHint)}
-              stopSession={handleStopClick}
+              stopSession={stopSession}
               status={status}
               error={error}
               remoteStream={remoteStream}
@@ -345,10 +350,7 @@ const VoiceChat: React.FC = () => {
               timeElapsed={timeElapsed}
               onTimerUp={stopSession}
               canStop={minReached}
-              onTick={(elapsed) => {
-                console.log("VoiceChat received elapsed:", elapsed);
-                setTimeElapsed(elapsed);
-              }}
+              onTick={(elapsed) => setTimeElapsed(elapsed)}
             />
           </motion.div>
         )
