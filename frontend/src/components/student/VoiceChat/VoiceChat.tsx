@@ -332,6 +332,17 @@ const VoiceChat: React.FC = () => {
       ) : (
         isSessionStarted && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: isExiting ? 0 : 1 }} className="min-h-screen flex flex-col items-center justify-center p-6">
+            {isEndingConversation && (
+              <Card className="fixed top-0 left-0 right-0 mx-auto mt-4 max-w-md z-50 bg-blue-50 border-blue-200">
+                <CardContent className="p-4 flex items-center justify-center">
+                  <div className="animate-pulse mr-2 h-2 w-2 rounded-full bg-blue-500"></div>
+                  <div className="animate-pulse mr-2 h-2 w-2 rounded-full bg-blue-500" style={{ animationDelay: "0.2s" }}></div>
+                  <div className="animate-pulse mr-4 h-2 w-2 rounded-full bg-blue-500" style={{ animationDelay: "0.4s" }}></div>
+                  <span className="text-blue-700 font-medium">Ending conversation, please wait...</span>
+                </CardContent>
+              </Card>
+            )}
+            
             <ConversationArea
               currentMessage={currentMessage}
               showHint={showHint}
@@ -354,21 +365,6 @@ const VoiceChat: React.FC = () => {
         )
       )}
 
-      {isEndingConversation && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-              <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full text-center"
-              >
-                  <h2 className="text-xl font-bold mb-4">Ending conversation, please wait...</h2>
-                  <div className="animate-pulse text-gray-500">Processing...</div>
-              </motion.div>
-          </div>
-      )}
-
-
       {error && error.includes("Microphone access not enabled") && (
         <Card className="w-full max-w-md mx-auto p-6 text-center bg-red-100">
           <CardContent>
@@ -385,7 +381,7 @@ const VoiceChat: React.FC = () => {
           <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full">
             <h2 className="text-xl font-bold text-center mb-4">Confirm End Conversation</h2>
             <p className="mb-4 text-center">
-              You haven’t reached the minimum time. If you leave now, you won’t receive feedback and will be redirected to the dashboard.
+              You haven't reached the minimum time. If you leave now, you won't receive feedback and will be redirected to the dashboard.
             </p>
             <div className="flex justify-center space-x-2">
               <button onClick={() => setIsStopModalOpen(false)} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
