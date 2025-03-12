@@ -35,7 +35,7 @@ def get_student_progress():
         )
 
         # Get all practice cases
-        all_practice_cases = PracticeCase.query.all()
+        all_practice_cases = PracticeCase.query.filter_by(section=student.section).all()
         progress_data = []
 
         for case in all_practice_cases:
