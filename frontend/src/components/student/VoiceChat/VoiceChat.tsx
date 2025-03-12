@@ -262,6 +262,11 @@ const VoiceChat: React.FC = () => {
   };
   
   const cancelSession = async () => {
+    // Show ending conversation banner
+    setIsEndingConversation(true);
+    
+    await new Promise(resolve => setTimeout(resolve, 100)); // Ensure UI updates before API call
+
     if (pc) {
       pc.getSenders().forEach((sender) => {
         if (sender.track) sender.track.stop();
@@ -289,6 +294,12 @@ const VoiceChat: React.FC = () => {
         console.error("Error canceling conversation:", error);
       }
     }
+    
+    // Add a short delay before navigation to ensure the user sees the banner
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Hide banner before navigation
+    setIsEndingConversation(false);
   
     // ✅ Redirect user based on role
     if (userRole === "instructor") {
@@ -332,16 +343,19 @@ const VoiceChat: React.FC = () => {
       ) : (
         isSessionStarted && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: isExiting ? 0 : 1 }} className="min-h-screen flex flex-col items-center justify-center p-6">
-            {isEndingConversation && (
-              <Card className="fixed top-0 left-0 right-0 mx-auto mt-4 max-w-md z-50 bg-blue-50 border-blue-200">
+                        {/* Status banner - placed at the bottom to ensure it renders above other elements */}
+            <div className={`fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-300 ${isEndingConversation ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              <Card className="mt-4 w-full max-w-md bg-blue-50 border border-blue-200 shadow-md">
                 <CardContent className="p-4 flex items-center justify-center">
-                  <div className="animate-pulse mr-2 h-2 w-2 rounded-full bg-blue-500"></div>
-                  <div className="animate-pulse mr-2 h-2 w-2 rounded-full bg-blue-500" style={{ animationDelay: "0.2s" }}></div>
-                  <div className="animate-pulse mr-4 h-2 w-2 rounded-full bg-blue-500" style={{ animationDelay: "0.4s" }}></div>
+                  <div className="flex items-center space-x-2 mr-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "600ms" }}></div>
+                  </div>
                   <span className="text-blue-700 font-medium">Ending conversation, please wait...</span>
                 </CardContent>
               </Card>
-            )}
+            </div>
             
             <ConversationArea
               currentMessage={currentMessage}
