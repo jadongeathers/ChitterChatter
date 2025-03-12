@@ -130,7 +130,7 @@ const Progress: React.FC = () => {
           variants={itemVariants}
           whileHover={{ scale: 1.03 }}
         >
-          <h2 className="text-lg font-semibold">Total Conversations</h2>
+          <h2 className="text-lg font-semibold">Completed Conversations</h2>
           <motion.p 
             className="text-3xl font-bold text-blue-600"
             initial={{ scale: 0.5, opacity: 0 }}
