@@ -321,7 +321,7 @@ const VoiceChat: React.FC = () => {
         onStart={startSession}
       />
 
-      {/* Ending conversation notification - always present in DOM but conditionally visible */}
+      {/* Ending conversation notification - pop-up card style */}
       <div className={`fixed inset-0 z-50 bg-black bg-opacity-20 flex items-center justify-center transition-opacity duration-300 ${isEndingConversation ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         <Card className="w-full max-w-sm bg-white shadow-lg">
           <CardContent className="p-6 text-center">
@@ -351,21 +351,11 @@ const VoiceChat: React.FC = () => {
         </Card>
       ) : (
         isSessionStarted && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: isExiting ? 0 : 1 }} className="min-h-screen flex flex-col items-center justify-center p-6">
-                        {/* Status banner - placed at the bottom to ensure it renders above other elements */}
-            <div className={`fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-300 ${isEndingConversation ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-              <Card className="mt-4 w-full max-w-md bg-blue-50 border border-blue-200 shadow-md">
-                <CardContent className="p-4 flex items-center justify-center">
-                  <div className="flex items-center space-x-2 mr-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "600ms" }}></div>
-                  </div>
-                  <span className="text-blue-700 font-medium">Ending conversation, please wait...</span>
-                </CardContent>
-              </Card>
-            </div>
-            
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: isExiting ? 0 : 1 }} 
+            className="min-h-screen flex flex-col items-center justify-center p-6"
+          >
             <ConversationArea
               currentMessage={currentMessage}
               showHint={showHint}
@@ -401,13 +391,23 @@ const VoiceChat: React.FC = () => {
 
       {isStopModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }} 
+            animate={{ opacity: 1, scale: 1 }} 
+            exit={{ opacity: 0, scale: 0.8 }} 
+            className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full"
+          >
             <h2 className="text-xl font-bold text-center mb-4">Confirm End Conversation</h2>
             <p className="mb-4 text-center">
               You haven't reached the minimum time. If you leave now, you won't receive feedback and will be redirected to the dashboard.
             </p>
             <div className="flex justify-center space-x-2">
-              <button onClick={() => setIsStopModalOpen(false)} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
+              <button 
+                onClick={() => setIsStopModalOpen(false)} 
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
               <button
                 onClick={() => {
                   setIsStopModalOpen(false);
