@@ -40,7 +40,7 @@ const VoiceChat: React.FC = () => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [userRole, setUserRole] = useState<"student" | "instructor" | null>(null);
   const [showConversationArea, setShowConversationArea] = useState(true);
-
+  const [isEndingConversation, setIsEndingConversation] = useState(false);
 
   const conversationIdRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -220,6 +220,8 @@ const VoiceChat: React.FC = () => {
   
   
   const stopSession = async () => {
+    setIsEndingConversation(true);
+
     if (pc) {
       pc.getSenders().forEach((sender) => {
         if (sender.track) sender.track.stop();
@@ -238,6 +240,7 @@ const VoiceChat: React.FC = () => {
       setIsExiting(true);
       setTimeout(async () => {
         setShowConversationArea(false);
+        setIsEndingConversation(false);
         setIsWaitingForFeedback(true);
         try {
           const response = await fetchWithAuth(
@@ -248,7 +251,7 @@ const VoiceChat: React.FC = () => {
           // Keep the waiting view visible and delay navigation for a smooth transition
           setTimeout(() => {
             navigate(`/feedback/${conversationIdRef.current}`);
-          }, 300); // additional delay to let the waiting view settle
+          }, 1000); // additional delay to let the waiting view settle
         } catch (err) {
           console.error("Error ending conversation:", err);
         }
@@ -347,6 +350,20 @@ const VoiceChat: React.FC = () => {
             />
           </motion.div>
         )
+      )}
+
+      {isEndingConversation && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+              <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full text-center"
+              >
+                  <h2 className="text-xl font-bold mb-4">Ending conversation, please wait...</h2>
+                  <div className="animate-pulse text-gray-500">Processing...</div>
+              </motion.div>
+          </div>
       )}
 
       {isSessionStarted && showConversationArea && (
