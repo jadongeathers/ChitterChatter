@@ -4,7 +4,7 @@ A real-time conversation system with AI feedback capabilities.
 
 ## Overview
 
-Chitterchatter is a platform that enables users to practice conversations with AI, receive feedback, and track their progress. The system features role-based access (student, instructor, master), conversational analytics, and uses OpenAI's real-time API for natural dialogue interactions.
+ChitterChatter is a platform, integrated within school curricula, that enables users to practice speaking in foreign languages with AI, receive feedback, and track their progress. The system features role-based access (student, instructor, master), conversational analytics, and uses OpenAI's real-time API for natural dialogue interactions.
 
 ## System Architecture
 
