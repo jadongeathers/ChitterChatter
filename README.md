@@ -72,7 +72,7 @@ frontend/
    pip install -r backend/requirements.txt
    ```
 
-4. Configure environment variables
+4. Configure environment variables:
    Create a `.env` file in the backend directory with:
    ```
    # Flask settings
