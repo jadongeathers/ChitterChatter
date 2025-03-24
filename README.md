@@ -130,31 +130,7 @@ frontend/
    ```bash
    npm run dev
    ```
-
-## OpenAI Real-time API Integration
-
-Chitterchatter uses OpenAI's real-time API for handling voice conversations. The integration is managed primarily in:
-
-- `backend/app/routes/chatbot.py`: Handles API requests and responses
-- `backend/app/services/voice_service.py`: Manages voice processing 
-
-For the undergraduate student, you'll need to provide a separate API key with appropriate usage limits to prevent accidental overruns.
-
-## User Roles and Permissions
-
-The system has three main user roles:
-
-1. **Student** - Can participate in practice conversations, view feedback, and track their progress
-2. **Instructor** - Can review student conversations, provide feedback, and manage practice cases
-3. **Master** - Has administrative access to manage users and system settings
-
-## Development Guidelines
-
-### Code Style
-
-- Backend: Follow PEP 8 guidelines
-- Frontend: Follow the project's ESLint configuration
-
+   
 ### Git Workflow
 
 We use a feature branch workflow:
@@ -175,25 +151,3 @@ We use a feature branch workflow:
    ```
 
 4. After review, your branch will be merged into the main branch
-
-### Testing
-
-- Run backend tests:
-  ```bash
-  cd backend
-  pytest
-  ```
-
-- Run frontend tests:
-  ```bash
-  cd frontend
-  npm test
-  ```
-
-## Troubleshooting
-
-Common issues and solutions:
-
-- **API Key Issues**: Ensure your OpenAI API key has access to the required models
-- **Database Errors**: Check database connection and run migrations
-- **WebSocket Errors**: Verify WebSocket service is running and accessible
