@@ -1,4 +1,4 @@
-# Chitterchatter
+# ChitterChatter
 
 A real-time conversation system with AI feedback capabilities.
 
@@ -75,9 +75,16 @@ frontend/
 4. Configure environment variables
    Create a `.env` file in the backend directory with:
    ```
-   FLASK_APP=app
-   FLASK_ENV=development
+   # Flask settings
    SECRET_KEY=your_secret_key
+   FLASK_APP=app.py
+   FLASK_ENV=development
+   
+   # Database configuration
+   DATABASE_URL=your_database_url
+   ENCRYPTION_KEY=your_encryption_key
+   
+   # OpenAI API key
    OPENAI_API_KEY=your_openai_api_key
    ```
 
@@ -113,7 +120,7 @@ frontend/
    npm install
    ```
 
-3. Configure environment variables
+3. Configure environment variables:
    Create a `.env` file in the frontend directory with:
    ```
    VITE_API_URL=http://localhost:5000
