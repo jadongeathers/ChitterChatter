@@ -123,7 +123,7 @@ frontend/
 3. Configure environment variables:
    Create a `.env` file in the frontend directory with:
    ```
-   VITE_API_URL=http://localhost:5000
+   VITE_API_URL=http://localhost:5001/api
    ```
 
 4. Start the development server
