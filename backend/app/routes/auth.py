@@ -140,6 +140,9 @@ def login():
         elif user.access_group == "All":
             start_date = None
             end_date = None  # "All" group has unlimited access
+        elif user.access_group == "Normal":
+            start_date = datetime(2025, 3, 10, 0, 0, 0, tzinfo=timezone.utc)
+            end_date = datetime(2025, 4, 27, 23, 59, 59, tzinfo=timezone.utc)
         else:
             return jsonify({"error": "Invalid access group"}), 500
 
@@ -280,18 +283,20 @@ def verify_email():
                     # Assign "All" access group to non-students (instructors)
                     user.access_group = "All"
                 else:
-                    # For students, assign access group dynamically within their section
-                    section_students = User.query.filter_by(class_name=user.class_name, section=user.section).all()
-                    group_a_count = sum(1 for s in section_students if s.access_group == "A")
-                    group_b_count = sum(1 for s in section_students if s.access_group == "B")
+                    # # For students, assign access group dynamically within their section
+                    # section_students = User.query.filter_by(class_name=user.class_name, section=user.section).all()
+                    # group_a_count = sum(1 for s in section_students if s.access_group == "A")
+                    # group_b_count = sum(1 for s in section_students if s.access_group == "B")
 
-                    # Flip a coin but correct imbalance if necessary
-                    if group_a_count == group_b_count:
-                        access_group = random.choice(["A", "B"])  # True random
-                    elif group_a_count < group_b_count:
-                        access_group = "A"
-                    else:
-                        access_group = "B"
+                    # # Flip a coin but correct imbalance if necessary
+                    # if group_a_count == group_b_count:
+                    #     access_group = random.choice(["A", "B"])  # True random
+                    # elif group_a_count < group_b_count:
+                    #     access_group = "A"
+                    # else:
+                    #     access_group = "B"
+
+                    access_group = "Normal" 
 
                     user.access_group = access_group
                 

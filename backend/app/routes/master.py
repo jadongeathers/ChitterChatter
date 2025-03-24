@@ -203,7 +203,7 @@ def add_student():
             current_app.logger.info("Setting access_group to 'All' for instructor")
         
         # Make sure access_group is valid for students
-        if is_student and access_group not in ["A", "B", "All"]:
+        if is_student and access_group not in ["A", "B", "All", "Normal"]:
             access_group = "A"  # Default to group A if invalid
             current_app.logger.info("Invalid access_group for student, defaulting to 'A'")
         
@@ -250,8 +250,8 @@ def update_access_group(user_id):
             return jsonify({"error": "Missing access_group parameter"}), 400
             
         new_access_group = data.get('access_group')
-        if new_access_group not in ['A', 'B', 'All']:
-            return jsonify({"error": "Invalid access group. Must be 'A', 'B', or 'All'"}), 400
+        if new_access_group not in ['A', 'B', 'All', 'Normal']:
+            return jsonify({"error": "Invalid access group. Must be 'A', 'B', 'All', or 'Normal'"}), 400
             
         # Find the user
         user = User.query.get(user_id)

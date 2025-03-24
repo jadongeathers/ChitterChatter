@@ -101,6 +101,7 @@ const UserListItem: React.FC<UserListItemProps> = ({
               user.access_group === "A" ? "bg-green-100 text-green-700" :
               user.access_group === "B" ? "bg-yellow-100 text-yellow-700" :
               user.access_group === "All" ? "bg-indigo-100 text-indigo-700" :
+              user.access_group === "Normal" ? "bg-blue-100 text-blue-700" :
               "bg-red-100 text-red-700"
             }`}>
               Group {user.access_group}

@@ -145,6 +145,7 @@ export const AddUserForm: React.FC<AddUserFormProps> = ({
                 <option value="A">Group A</option>
                 <option value="B">Group B</option>
                 <option value="All">All Access</option>
+                <option value="Normal">Normal Access</option>
               </select>
             </div>
           )}

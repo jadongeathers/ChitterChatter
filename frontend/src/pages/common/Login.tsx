@@ -252,6 +252,9 @@ const Login = () => {
                   {userData.user.access_group === "All" && (
                     <p className="text-sm mt-2">You have full access.</p>
                   )}
+                  {userData.user.access_group === "Normal" && (
+                    <p className="text-sm mt-2">You have access until April 27th, 2025.</p>
+                  )}
                 </>
               )}
             </div>

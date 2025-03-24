@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchWithAuth } from "@/utils/api";
 import ConsentForm from "@/components/common/ConsentForm";
 import StudentSurvey from "@/components/student/StudentSurvey";
+import { set } from "react-hook-form";
 
 // Enum for registration steps
 enum RegistrationStep {
@@ -59,6 +60,8 @@ const Register = () => {
           setAccessMessage("You can access the tool from March 10, 2025, to March 30, 2025.");
         } else if (data.access_group === "B") {
           setAccessMessage("You can access the tool from April 7, 2025, to April 27, 2025.");
+        } else if (data.access_group === "Normal") {
+          setAccessMessage("You can access the tool from March 10, 2025, to April 27, 2025.");
         } else {
           setAccessMessage("You have full access.");
         }

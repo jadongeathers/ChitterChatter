@@ -71,12 +71,14 @@ export const EditAccessGroupModal: React.FC<EditAccessGroupModalProps> = ({
             <option value="A">Group A</option>
             <option value="B">Group B</option>
             <option value="All">All Access</option>
+            <option value="Normal">Normal Access</option>
           </select>
           
           <div className="mt-3 text-sm text-gray-600">
             <p><strong>Group A:</strong> Access from March 10 to March 30</p>
             <p><strong>Group B:</strong> Access from April 7 to April 27</p>
             <p><strong>All:</strong> Unlimited access (typically for instructors)</p>
+            <p><strong>Normal:</strong> Access until April 27</p>
           </div>
         </div>
         
