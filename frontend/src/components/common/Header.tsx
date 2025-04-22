@@ -46,7 +46,7 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
     localStorage.removeItem("access_token");
     localStorage.removeItem("user_role");
     localStorage.removeItem("user");
-    navigate("/login");
+    navigate("/");
   };
 
   const handleProfilePictureChange = async (pictureFile: string) => {

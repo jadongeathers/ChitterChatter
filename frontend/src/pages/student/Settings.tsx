@@ -212,7 +212,7 @@ const Settings: React.FC = () => {
       
       // Redirect to logout or login page after short delay
       setTimeout(() => {
-        navigate("/login");
+        navigate("/");
       }, 2000);
     } catch (error) {
       console.error("Error deactivating account:", error);

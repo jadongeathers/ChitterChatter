@@ -22,7 +22,14 @@ import FeedbackHelp from "./pages/student/FeedbackHelp";
 import InstructorFeedbackHelp from "./pages/instructor/FeedbackHelp";
 import InstructorSettings from "./pages/instructor/Settings";
 
+// New Imports for Public Pages
+import LandingPage from "@/pages/common/LandingPage";
+import ResearchTeam from "@/pages/common/ResearchTeam";
+
 import { fetchWithAuth } from "./utils/api";
+
+// Define the UserRole type to match what Layout expects
+type UserRole = "student" | "instructor" | "master";
 
 // Debug component to help find routing issues
 const NoMatch = () => {
@@ -40,27 +47,37 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [currentRole, setCurrentRole] = useState<"student" | "instructor" | "master" | null>(null);
-  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [currentRole, setCurrentRole] = useState<UserRole | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Manage scroll lock for login/register pages
     if (["/login", "/register"].includes(location.pathname)) {
       document.body.classList.add("disable-scroll");
     } else {
       document.body.classList.remove("disable-scroll");
     }
-
-    return () => document.body.classList.remove("disable-scroll");
+    return () => {
+      document.body.classList.remove("disable-scroll");
+    };
   }, [location.pathname]);
 
   useEffect(() => {
-    if (["/login", "/register"].includes(location.pathname)) return;
-
+    // Define public routes that don't require a user fetch.
+    const publicRoutes = ["/login", "/register", "/research-team"];
+    
+    // If user is on a public route or on the landing page ("/"), skip fetching user data
+    if (publicRoutes.includes(location.pathname) || location.pathname === "/") {
+      setIsLoading(false);
+      return;
+    }
+    
     const fetchUser = async () => {
       try {
         const token = localStorage.getItem("access_token");
         if (!token) {
-          navigate("/login");
+          setIsLoading(false);
+          if (location.pathname !== "/") navigate("/login");
           return;
         }
 
@@ -71,42 +88,38 @@ function App() {
         if (!response.ok) throw new Error("Failed to fetch user");
 
         const user = await response.json();
-        console.log(user.is_master);
-
-        if (user.is_master) {
-          setCurrentRole("master");
-        } else {
-          setCurrentRole(user.is_student ? "student" : "instructor");
-        }
+        setCurrentRole(user.is_master ? "master" : (user.is_student ? "student" : "instructor"));
+        setIsLoading(false);
       } catch (error) {
         console.error("Error fetching user:", error);
         localStorage.removeItem("access_token");
         localStorage.removeItem("user_role");
-        navigate("/login");
+        setIsLoading(false);
+        if (location.pathname !== "/") navigate("/login");
       }
     };
 
     fetchUser();
   }, [navigate, location.pathname]);
 
-  // Handle login/register routes
-  if (["/login", "/register"].includes(location.pathname)) {
-    return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="*" element={<NoMatch />} /> {/* Debug route */}
-      </Routes>
-    );
-  }
+  if (isLoading) return null;
 
-  if (currentRole === null) return null;
+  // If there's no token and the user is at the root path, render the landing page.
+  const token = localStorage.getItem("access_token");
+  if (!token && location.pathname === "/") {
+    return <LandingPage />;
+  }
 
   return (
     <Routes>
-      <Route path="/" element={<ProtectedRoute />}>
-        <Route element={<Layout currentRole={currentRole} />}>
-          {/* Default dashboard based on user role */}
+      {/* Public Routes */}
+      <Route path="/research-team" element={<ResearchTeam />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+
+      {/* Protected Routes */}
+      <Route path="/*" element={<ProtectedRoute />}>
+        <Route element={<Layout currentRole={currentRole as UserRole} />}>
           <Route index element={
             currentRole === "master"
               ? <MasterDashboard />
@@ -114,8 +127,6 @@ function App() {
                 ? <StudentDashboard />
                 : <InstructorDashboard />
           } />
-
-        
           {/* Common Routes */}
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="practice/*" element={<Practice />} />
@@ -126,7 +137,7 @@ function App() {
           <Route path="conversations/:id" element={<ConversationDetailPage />} />
           <Route path="feedback-help" element={<FeedbackHelp />} />
 
-          {/* Master Routes - Multiple path options for flexibility */}
+          {/* Master Routes */}
           <Route path="master" element={<MasterDashboard />} />
           <Route path="master/dashboard" element={<MasterDashboard />} />
 
@@ -140,11 +151,12 @@ function App() {
           <Route path="instructor/analytics" element={<Analytics />} />
           <Route path="instructor/feedback-help" element={<InstructorFeedbackHelp />} />
           <Route path="instructor/settings" element={<InstructorSettings />} />
-
           {/* Debug catch-all route */}
           <Route path="*" element={<NoMatch />} />
         </Route>
       </Route>
+
+      <Route path="*" element={<NoMatch />} />
     </Routes>
   );
 }
