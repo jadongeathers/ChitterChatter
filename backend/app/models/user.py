@@ -21,10 +21,10 @@ class User(db.Model):
     profile_picture = db.Column(db.String(100), default="blueberry.png")
     
     institution = db.Column(db.String(255), nullable=True)
-    class_name = db.Column(db.String(255), nullable=True)
+    # class_name = db.Column(db.String(255), nullable=True) #NEW
     section = db.Column(db.String(255), nullable=True)
     access_group = db.Column(db.String(255), nullable=True)
-    is_student = db.Column(db.Boolean, default=True)
+    # is_student = db.Column(db.Boolean, default=True) #NEW
     is_master = db.Column(db.Boolean, default=False)
     is_registered = db.Column(db.Boolean, default=False)
 
@@ -43,6 +43,7 @@ class User(db.Model):
     # Relationships
     conversations = db.relationship("Conversation", back_populates="student", lazy=True)
     messages = db.relationship("Message", back_populates="student", lazy=True)
+    enrollments = db.relationship("Enrollment", back_populates="user", cascade="all, delete-orphan") #NEW
 
     def set_password(self, password):
         """Hashes and stores the password."""
@@ -123,3 +124,18 @@ class User(db.Model):
             "consent_date": self.consent_date.isoformat() if self.consent_date else None,
             "has_completed_survey": self.has_completed_survey
         }
+
+#NEW BELOW
+
+class Student(User):
+    __tablename__ = 'students'
+    
+    id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    graduation_year = db.Column(db.String(255), nullable=True)
+
+
+class Instructor(User):
+    __tablename__ = 'instructors'
+
+    id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    office_hours = db.Column(db.String(255), nullable=True)
