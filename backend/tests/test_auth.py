@@ -5,8 +5,8 @@ from unittest.mock import patch
 from flask import Flask
 from flask_jwt_extended import JWTManager
 from werkzeug.security import generate_password_hash
-from app.models import User, db
-from app.routes.auth import auth
+from backend.app.models import User, db
+from backend.app.routes.auth import auth
 from freezegun import freeze_time
 
 # ==================== FIXTURES ====================

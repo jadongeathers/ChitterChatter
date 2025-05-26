@@ -1,5 +1,5 @@
 import pytest
-from app.models import db, User, PracticeCase
+from backend.app.models import db, User, PracticeCase
 from flask import url_for
 from werkzeug.security import generate_password_hash
 

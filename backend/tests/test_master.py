@@ -1,5 +1,5 @@
 import json
-from app.models import db, User, PracticeCase
+from backend.app.models import db, User, PracticeCase
 
 def test_get_classes(client):
     """Test fetching all available classes"""

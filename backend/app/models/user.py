@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from cryptography.fernet import Fernet
 import os
-from app.models import db
+from backend.app.models import db
 
 # Load encryption key from .env
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")

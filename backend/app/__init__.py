@@ -2,11 +2,13 @@ from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flask_migrate import Migrate
-from app.config import Config
-from app.routes import register_blueprints
-from app.models import db
+from backend.app.config import Config
+from backend.app.routes import register_blueprints
+from backend.app.models import db
+from dotenv import load_dotenv
 import os
 
+load_dotenv()
 # Initialize extensions
 jwt = JWTManager()
 migrate = Migrate()
@@ -34,3 +36,4 @@ def create_app():
     register_blueprints(app)
 
     return app
+create_app = create_app

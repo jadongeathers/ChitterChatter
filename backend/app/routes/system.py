@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import User, SystemFeedback, db
+from backend.app.models import User, SystemFeedback, db
 from datetime import datetime, timezone
 
 system = Blueprint('system', __name__)

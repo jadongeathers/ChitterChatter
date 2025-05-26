@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from sqlalchemy.orm import relationship
-from app.models import db
+from backend.app.models import db
 
 class Conversation(db.Model):
     __tablename__ = "conversations"

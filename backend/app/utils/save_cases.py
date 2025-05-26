@@ -4,7 +4,7 @@ import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from app.models import PracticeCase, db
+from backend.app.models import PracticeCase, db
 from app import create_app
 
 def extract_field(text, field_name):

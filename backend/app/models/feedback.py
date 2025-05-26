@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from app.models import db
+from backend.app.models import db
 
 class SystemFeedback(db.Model):
     """Model for storing system feedback from users."""

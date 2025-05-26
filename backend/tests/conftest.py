@@ -4,7 +4,7 @@ import os
 import sqlalchemy
 from sqlalchemy.orm import scoped_session, sessionmaker
 from app import create_app
-from app.models import db
+from backend.app.models import db
 
 # Load environment variables
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "../.env"))

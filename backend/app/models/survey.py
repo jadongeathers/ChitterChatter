@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, redirect
 from datetime import datetime, timezone
-from app.models import db, User
+from backend.app.models import db, User
 import logging
 import json
 

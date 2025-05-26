@@ -1,6 +1,6 @@
 import pytest
-from app.models import User, db
-from app.models.practice_case import PracticeCase
+from backend.app.models import User, db
+from backend.app.models.practice_case import PracticeCase
 from werkzeug.security import generate_password_hash
 
 def test_create_session(client):

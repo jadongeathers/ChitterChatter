@@ -2,7 +2,7 @@ from flask import current_app
 import requests
 import os
 from datetime import datetime
-from app.models import PracticeCase, db
+from backend.app.models import PracticeCase, db
 
 class VoiceService:
     def __init__(self):

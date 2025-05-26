@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from app.services.voice_service import VoiceService
+from backend.app.services.voice_service import VoiceService
 
 def test_create_session(app):
     """Test VoiceService's create_session method inside an app context."""

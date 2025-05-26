@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, redirect
 from datetime import datetime, timezone
-from app.models import db, User
-from app.models.survey import Survey
+from backend.app.models import db, User
+from backend.app.models.survey import Survey
 import logging
 
 # Create a blueprint

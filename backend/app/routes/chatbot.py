@@ -3,10 +3,11 @@ import requests
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from flask import Blueprint, jsonify, request, current_app, send_file
-from app.models import User, PracticeCase, Conversation, Message, db
-from app.services.voice_service import VoiceService
+from backend.app.models import User, PracticeCase, Conversation, Message, db
+from backend.app.services.voice_service import VoiceService
 from pathlib import Path
 from werkzeug.exceptions import NotFound
+from backend.app.prompts import load_prompt
 
 # Import environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -132,4 +133,24 @@ def proxy_openai_realtime():
         }), 400
     except Exception as e:
         current_app.logger.error(f"Error in realtime proxy: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@chatbot.route('/api/chatbot/curricular-goals', methods=['POST'])
+def curricular_goals():
+    data = request.get_json()
+    user_input = data.get("message", "")
+
+    # Load a system prompt from file
+    system_prompt = load_prompt("curricular_goals")  # expects prompts/curricular_goals.txt
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_input}
+            ]
+        )
+        return jsonify({"response": response.choices[0].message["content"]})
+    except Exception as e:
         return jsonify({"error": str(e)}), 500

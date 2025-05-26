@@ -1,6 +1,7 @@
+import openai
 from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import PracticeCase, Conversation, User, db
+from backend.app.models import PracticeCase, Conversation, User, db
 from datetime import datetime, timezone
 
 practice_cases = Blueprint('practice_cases', __name__)
@@ -158,6 +159,22 @@ def add_practice_case():
         End with a summary of **1-2 positive aspects** and **1-2 key improvement areas**.
         """
 
+        # Default goals system prompt
+        default_goals_prompt = """You are a supportive assistant helping language instructors create an effective speaking practice activity. Right now, they are trying to describe the learning goals and objectives for their practice case. You will help them with this task.
+
+        FIRST MESSAGE: Your first message must be: “I’m here to help with your learning goals if needed! What specific language skills would you like your students to practice?”
+
+        If the instructor asks for suggestions (e.g. “Suggest ideas”): 
+        Ensure your suggestion, and only the suggestion, begins with the token [START SUGGESTION] and ends with the token [END SUGGESTION]. 
+        Example format: “Sure, let me suggest some ideas that ...: [START SUGGESTION] ... [END SUGGESTION].”
+
+        If the instructor says “Help me think”: reply with “Let’s think through this together. Consider: ...” and then pose a relevant question, like “What builds on their existing knowledge?” or “What have students studied so far?”
+
+        For any other questions, provide helpful, concise responses that encourage the instructor to define clear, measurable learning objectives for studying {$target_language} at the proficiency level: {$proficiency_level}.
+
+        Occasionally remind instructors to write down their learning goals in the “Lesson Content” section."""
+
+
         # Create a new practice case
         new_case = PracticeCase(
             institution=user.institution,  
@@ -170,9 +187,12 @@ def add_practice_case():
             accessible_on=datetime.fromisoformat(data.get('accessible_on')) if data.get('accessible_on') else None,
             published=False,  
             feedback_prompt=data.get("feedback_prompt", default_feedback_prompt),  # Use default if not provided
-            voice=data.get("voice", "verse"),  # Default voice is "verse"
-            language_code=data.get("language_code", "en")  # Default language code is "en"
+            voice=data.get("voice", "verse"),  # Default voice is "verse",
+            language_code=data.get("language_code", "en"),  # Default language code is "en"
+            system_prompt_goals=data.get("system_prompt_goals", default_goals_prompt),
+
         )
+    
 
         # Add the new case to the database
         db.session.add(new_case)
@@ -237,3 +257,40 @@ def delete_practice_case(case_id):
         db.session.rollback()
         current_app.logger.error(f"Error deleting practice case: {str(e)}")
         return jsonify({"error": "Failed to delete practice case"}), 500
+    
+@practice_cases.route("/chatbot_prompt/<int:case_id>/<string:prompt_type>", methods=["GET"])
+@jwt_required()
+def get_prompt(case_id, prompt_type):
+    case = PracticeCase.query.get_or_404(case_id)
+    prompt_map = {
+        "main": case.system_prompt,
+        "goals": case.system_prompt_goals,
+        "review": case.system_prompt_review,
+    }
+    return jsonify({"prompt": prompt_map.get(prompt_type, "")}), 200
+
+@practice_cases.route("/chatbot_respond", methods=["POST"])
+@jwt_required()
+def chatbot_respond():
+    openai.api_key = current_app.config["OPENAI_API_KEY"]
+    data = request.get_json()
+
+    prompt = data.get("prompt")
+    user_input = data.get("message")
+
+    if not prompt or not user_input:
+        return jsonify({"error": "Missing prompt or message"}), 400
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": user_input}
+            ]
+        )
+        return jsonify({"response": response.choices[0].message["content"]}), 200
+
+    except openai.error.OpenAIError as e:
+        current_app.logger.error(f"OpenAI API Error: {str(e)}")
+        return jsonify({"error": str(e)}), 500

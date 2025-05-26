@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime, timezone
-from app.models import Conversation, Message, PracticeCase, db
+from backend.app.models import Conversation, Message, PracticeCase, db
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import os
 from openai import OpenAI

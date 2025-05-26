@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import PracticeCase, Conversation, User, db
+from backend.app.models import PracticeCase, Conversation, User, db
 from sqlalchemy.sql import func
 
 students = Blueprint("students", __name__)

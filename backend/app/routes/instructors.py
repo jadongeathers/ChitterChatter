@@ -1,6 +1,6 @@
 # routes/instructor.py
 from flask import Blueprint, jsonify, current_app, request
-from app.models import db, User, Conversation, PracticeCase
+from backend.app.models import db, User, Conversation, PracticeCase
 from werkzeug.security import generate_password_hash
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import humanize
