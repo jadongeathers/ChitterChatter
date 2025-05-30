@@ -90,17 +90,16 @@ def get_practice_case(case_id):
 @jwt_required()
 def update_practice_case(case_id):
     """
-    Update an existing practice case, including its feedback prompt, voice, and language_code.
+    Update an existing practice case, including all fields like feedback prompt, voice, goals, key items, etc.
     """
     try:
         data = request.get_json()
-
-        # Find the practice case
         practice_case = PracticeCase.query.get(case_id)
+
         if not practice_case:
             return jsonify({"error": "Practice case not found"}), 404
 
-        # Update fields if provided
+        # Core editable fields
         practice_case.system_prompt = data.get("system_prompt", practice_case.system_prompt)
         practice_case.min_time = int(data.get("min_time", practice_case.min_time))
         practice_case.max_time = int(data.get("max_time", practice_case.max_time))
@@ -109,12 +108,22 @@ def update_practice_case(case_id):
         practice_case.published = data.get("published", practice_case.published)
         practice_case.accessible_on = data.get("accessible_on", practice_case.accessible_on)
 
-        # Update the feedback prompt
+        # AI prompts
         practice_case.feedback_prompt = data.get("feedback_prompt", practice_case.feedback_prompt)
-        
-        # Update voice and language_code
+        practice_case.system_prompt_goals = data.get("system_prompt_goals", practice_case.system_prompt_goals)
+        practice_case.system_prompt_review = data.get("system_prompt_review", practice_case.system_prompt_review)
+        practice_case.chatbot_suggestions = data.get("chatbot_suggestions", practice_case.chatbot_suggestions)
+
+        # Language and speech
         practice_case.voice = data.get("voice", practice_case.voice)
         practice_case.language_code = data.get("language_code", practice_case.language_code)
+        practice_case.language = data.get("language", practice_case.language)
+        practice_case.proficiency_level = data.get("proficiency_level", practice_case.proficiency_level)
+
+        # Case-specific details
+        practice_case.key_items = data.get("key_items", practice_case.key_items)
+        practice_case.situation = data.get("situation", practice_case.situation)
+        practice_case.learning_objectives = data.get("learning_objectives", practice_case.learning_objectives)
 
         db.session.commit()
         return jsonify({"message": "Practice case updated successfully"}), 200
@@ -124,80 +133,45 @@ def update_practice_case(case_id):
         db.session.rollback()
         return jsonify({"error": "Failed to update practice case"}), 500
 
-
 @practice_cases.route('/add_case', methods=['POST'])
 @jwt_required()
 def add_practice_case():
-    """
-    Add a new practice case with default values for feedback prompt, voice, and language_code if not provided.
-    """
     try:
         data = request.json
         current_user_id = int(get_jwt_identity())
-
-        # Retrieve the user from the database
         user = User.query.get(current_user_id)
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        # Default feedback prompt
-        default_feedback_prompt = """You are an AI tutor--a Virtual Practice Partner (VPP)--that provides personalized feedback to students practicing their language skills. You must use English to provide feedback. You should not make it clear that you are AI.
-        To provide feedback, you will use the transcript that follows from a student-VPP interaction. Your responses should be anchored in the transcript.
-        
-        Your primary goal is to help students **improve proficiency, comfort, and confidence** in their target language.
-        
-        Provide feedback in a **constructive, supportive, and encouraging tone**. 
-        If applicable, highlight both strengths and areas for improvement. Do not mention things that are not substantiated by the transcript.
+        default_feedback_prompt = """You are an AI tutor--a Virtual Practice Partner (VPP)..."""  # shorten if needed
+        default_goals_prompt = """You are a supportive assistant helping language instructors..."""
 
-        Key areas to assess:
-        1. **Fluency & Coherence**: How naturally and smoothly does the student speak?
-        2. **Vocabulary Usage**: Is the student using appropriate and varied vocabulary?
-        3. **Grammar & Accuracy**: Are there any grammatical errors? If so, suggest corrections.
-        4. **Pronunciation & Clarity**: Is the student's pronunciation clear? Highlight any areas that could be improved.
-        5. **Comprehension & Response Appropriateness**: Does the student understand and respond appropriately?
-        
-        End with a summary of **1-2 positive aspects** and **1-2 key improvement areas**.
-        """
-
-        # Default goals system prompt
-        default_goals_prompt = """You are a supportive assistant helping language instructors create an effective speaking practice activity. Right now, they are trying to describe the learning goals and objectives for their practice case. You will help them with this task.
-
-        FIRST MESSAGE: Your first message must be: “I’m here to help with your learning goals if needed! What specific language skills would you like your students to practice?”
-
-        If the instructor asks for suggestions (e.g. “Suggest ideas”): 
-        Ensure your suggestion, and only the suggestion, begins with the token [START SUGGESTION] and ends with the token [END SUGGESTION]. 
-        Example format: “Sure, let me suggest some ideas that ...: [START SUGGESTION] ... [END SUGGESTION].”
-
-        If the instructor says “Help me think”: reply with “Let’s think through this together. Consider: ...” and then pose a relevant question, like “What builds on their existing knowledge?” or “What have students studied so far?”
-
-        For any other questions, provide helpful, concise responses that encourage the instructor to define clear, measurable learning objectives for studying {$target_language} at the proficiency level: {$proficiency_level}.
-
-        Occasionally remind instructors to write down their learning goals in the “Lesson Content” section."""
-
-
-        # Create a new practice case
         new_case = PracticeCase(
-            institution=user.institution,  
-            class_name=user.class_name,    
-            description=data.get('description'),
+            institution=user.institution,
+            class_name=user.class_name,
             title=data.get('title'),
+            description=data.get('description'),
             system_prompt=data.get('system_prompt'),
-            min_time=int(data.get('min_time', 0)),  
-            max_time=int(data.get('max_time', 0)),  
+            system_prompt_goals=data.get('system_prompt_goals', default_goals_prompt),
+            system_prompt_review=data.get('system_prompt_review'),
+            chatbot_suggestions=data.get('chatbot_suggestions'),
+            voice=data.get("voice", "verse"),
+            language_code=data.get("language_code", "en"),
+            feedback_prompt=data.get("feedback_prompt", default_feedback_prompt),
+            min_time=int(data.get('min_time', 0)),
+            max_time=int(data.get('max_time', 0)),
             accessible_on=datetime.fromisoformat(data.get('accessible_on')) if data.get('accessible_on') else None,
-            published=False,  
-            feedback_prompt=data.get("feedback_prompt", default_feedback_prompt),  # Use default if not provided
-            voice=data.get("voice", "verse"),  # Default voice is "verse",
-            language_code=data.get("language_code", "en"),  # Default language code is "en"
-            system_prompt_goals=data.get("system_prompt_goals", default_goals_prompt),
+            published=False,
 
+            # Additional fields
+            learning_objectives=data.get("learning_objectives"),
+            key_items=data.get("key_items"),
+            situation=data.get("situation"),
+            proficiency_level=data.get("proficiency_level"),
         )
-    
 
-        # Add the new case to the database
         db.session.add(new_case)
         db.session.commit()
-
         return jsonify(new_case.to_dict()), 201
 
     except Exception as e:
@@ -293,4 +267,28 @@ def chatbot_respond():
 
     except openai.error.OpenAIError as e:
         current_app.logger.error(f"OpenAI API Error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+@practice_cases.route("/suggestions", methods=["POST"])
+@jwt_required()
+def suggest_ideas():
+    try:
+        data = request.get_json()
+        prompt = data.get("prompt")
+        message = data.get("message")
+
+        if not prompt or not message:
+            return jsonify({"error": "Missing prompt or message"}), 400
+
+        openai.api_key = current_app.config["OPENAI_API_KEY"]
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": message}
+            ]
+        )
+        return jsonify({"response": response.choices[0].message["content"]}), 200
+
+    except openai.error.OpenAIError as e:
+        current_app.logger.error(f"OpenAI error: {str(e)}")
         return jsonify({"error": str(e)}), 500
