@@ -7,11 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 import { fetchWithAuth } from "@/utils/api";
+import { useAuth } from "@/contexts/AuthContext"; // ← ADD THIS IMPORT
 import ConsentForm from "@/components/common/ConsentForm";
 import StudentSurvey from "@/components/student/StudentSurvey";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth(); // ← ADD THIS HOOK
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -24,7 +26,6 @@ const Login = () => {
   const [showRequiredMessage, setShowRequiredMessage] = useState(false);
   const [requiredMessage, setRequiredMessage] = useState("");
   const [showCompletionThankYou, setShowCompletionThankYou] = useState(false);
-
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,10 +138,14 @@ const Login = () => {
   };
 
   const completeLogin = (data: any) => {
-    // Store access token & user data
+    // Store access token & user data (KEEP THIS - still needed)
     localStorage.setItem("access_token", data.access_token);
     localStorage.setItem("user_role", data.user.is_student ? "student" : "instructor");
     localStorage.setItem("is_master", JSON.stringify(data.user.is_master));
+    
+    // ← ADD THIS: Update AuthContext state AFTER storing token
+    const userRole = data.user.is_master ? "master" : (data.user.is_student ? "student" : "instructor");
+    login(userRole, data.access_token);
     
     // Redirect user based on role
     if (data.user.is_master) {
@@ -152,6 +157,8 @@ const Login = () => {
     }
   };
 
+  // ... rest of your component remains exactly the same
+  
   // If we're showing the consent form, return that directly
   if (showConsentForm) {
     return (
