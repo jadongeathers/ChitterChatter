@@ -2,10 +2,14 @@ from flask import Blueprint, request, jsonify, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app.models import User, db
+from app.utils.user_roles import is_user_student
 from datetime import datetime, timezone
+import app.routes.auth
 import random
 
+
 auth = Blueprint('auth', __name__)
+
 
 @auth.route('/register', methods=['POST'])
 def register():
@@ -26,7 +30,7 @@ def register():
             else:
                 user = existing_user
         else:
-            return jsonify({"error": "Institutional access required"}), 403
+            return jsonify({"error": "Institutional access required. Contact us to request institutional access."}), 403
 
         # ✅ Ensure the access group is already assigned
         if not user.access_group:
@@ -58,7 +62,7 @@ def register():
                 "email": user.email,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
-                "is_student": user.is_student,
+                "is_student": is_user_student(user),
                 "access_group": user.access_group,
                 "is_master": user.is_master,
                 "is_active": user.is_active,
@@ -114,7 +118,7 @@ def login():
                     "email": user.email,
                     "first_name": user.first_name,
                     "last_name": user.last_name,
-                    "is_student": user.is_student,
+                    "is_student": is_user_student(user),
                     "access_group": user.access_group,
                     "is_master": user.is_master,
                     "is_active": user.is_active,
@@ -166,7 +170,7 @@ def login():
                 "email": user.email,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
-                "is_student": user.is_student,
+                "is_student": is_user_student(user),
                 "access_group": user.access_group,
                 "is_master": user.is_master,
                 "is_active": user.is_active,
@@ -205,7 +209,7 @@ def get_current_user():
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "is_student": user.is_student,
+            "is_student": is_user_student(user),
             "is_master": user.is_master,
             "created_at": user.created_at.isoformat(),
             "last_login": user.last_login.isoformat() if user.last_login else None,
@@ -279,7 +283,7 @@ def verify_email():
 
             # Only set the access_group if it's not already set
             if user.access_group is None:  # Ensure group is only assigned once
-                if not user.is_student:
+                if not is_user_student(user):
                     # Assign "All" access group to non-students (instructors)
                     user.access_group = "All"
                 else:
@@ -308,10 +312,10 @@ def verify_email():
             return jsonify({
                 "message": "Email verified, proceed to registration",
                 "access_group": user.access_group,
-                "is_student": user.is_student
+                "is_student": is_user_student(user),
             }), 200
 
-        return jsonify({"error": "Institutional access required"}), 403
+        return jsonify({"error": "Institutional access required. Contact us to request institutional access."}), 403
 
     except Exception as e:
         current_app.logger.error(f"Email verification error: {str(e)}")

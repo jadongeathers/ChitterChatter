@@ -29,7 +29,7 @@ def start_conversation():
         language_code = practice_case.language_code or "en"
 
         conversation = Conversation(
-            student_id=user_id,  # ✅ Ensure conversation links to a student
+            user_id=user_id,  # ✅ Ensure conversation links to a student
             practice_case_id=practice_case_id,
             start_time=datetime.now(timezone.utc),
             language=language_code  # Set language from practice case
@@ -86,7 +86,7 @@ def save_message(conversation_id):
 
         message = Message(
             conversation_id=conversation.id,
-            student_id=conversation.student_id,  # Ensure the message links to the student
+            user_id=conversation.user_id,  # Ensure the message links to the student
             role=role,
             content=text
         )
@@ -209,35 +209,42 @@ def get_feedback(conversation_id):
 @jwt_required()
 def get_latest_conversation():
     """
-    Retrieve the most recent conversation for the authenticated user, including transcript & AI feedback.
+    Retrieve the most recent conversation for the authenticated user with optional class filtering.
+    
+    Query Parameters:
+    - class_id (optional): Filter for latest conversation in a specific class
+    - section_id (optional): Filter for latest conversation in a specific section
     """
     try:
         current_app.logger.info("🔄 [START] Attempting to fetch the latest conversation for the current user.")
 
         # Get the user ID from the JWT token
-        student_id = get_jwt_identity()
-        current_app.logger.debug(f"🔑 Retrieved user ID from JWT: {student_id}")
+        user_id = get_jwt_identity()
+        current_app.logger.debug(f"🔑 Retrieved user ID from JWT: {user_id}")
 
         # Check if user ID is valid
-        if not student_id:
+        if not user_id:
             current_app.logger.error("❌ No user ID found in JWT token.")
             return jsonify({"error": "User ID not found in token."}), 400
 
-        # Filter conversations by user ID and get the most recent one
-        current_app.logger.debug("📥 Querying the database for the user's latest conversation.")
-        conversation = (
-            Conversation.query
-            .filter_by(student_id=student_id, completed=True)  # Filter conversations for the logged-in user
-            .order_by(Conversation.id.desc())  # Order by the latest conversation ID
-            .first()
-        )
+        # Get optional filters
+        class_id = request.args.get('class_id', type=int)
+        section_id = request.args.get('section_id', type=int)
+
+        # Build query with optional class filter
+        query = Conversation.query.filter_by(user_id=user_id, completed=True)
+        
+        if class_id:
+            query = query.join(PracticeCase).filter(PracticeCase.class_id == class_id)
+        
+        conversation = query.order_by(Conversation.id.desc()).first()
 
         # Check if a conversation was found
         if not conversation:
-            current_app.logger.warning(f"⚠️ No recent conversation found for user ID: {student_id}")
+            current_app.logger.warning(f"⚠️ No recent conversation found for user ID: {user_id}")
             return jsonify({"error": "No recent conversation found."}), 404
 
-        current_app.logger.info(f"✅ Latest conversation found for user ID {student_id} with conversation ID {conversation.id}")
+        current_app.logger.info(f"✅ Latest conversation found for user ID {user_id} with conversation ID {conversation.id}")
 
         # Debugging: Log the messages and feedback details
         messages_history = conversation.get_messages_history()
@@ -253,5 +260,5 @@ def get_latest_conversation():
         })
 
     except Exception as e:
-        current_app.logger.error(f"❌ [ERROR] Failed to fetch recent conversation for user {student_id if 'student_id' in locals() else 'Unknown'}: {str(e)}")
+        current_app.logger.error(f"❌ [ERROR] Failed to fetch recent conversation for user {user_id if 'user_id' in locals() else 'Unknown'}: {str(e)}")
         return jsonify({"error": "Failed to fetch recent conversation"}), 500

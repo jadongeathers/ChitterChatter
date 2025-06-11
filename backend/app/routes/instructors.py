@@ -1,10 +1,14 @@
-# routes/instructor.py
-from flask import Blueprint, jsonify, current_app, request
-from app.models import db, User, Conversation, PracticeCase
-from werkzeug.security import generate_password_hash
-from flask_jwt_extended import jwt_required, get_jwt_identity
+# routes/instructors.py
 import humanize
+
 from datetime import datetime, timezone 
+from flask import Blueprint, jsonify, current_app, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from werkzeug.security import generate_password_hash
+
+from app.models import db, User, Conversation, PracticeCase, Enrollment, Section, Class
+from app.utils.user_roles import is_user_instructor, get_students_for_instructor, get_instructor_section
+
 
 instructors = Blueprint("instructor", __name__)
 
@@ -21,32 +25,125 @@ def format_last_active(timestamp):
     return humanize.naturaltime(datetime.now(timezone.utc) - timestamp)
 
 
+@instructors.route("/classes", methods=["GET"])
+@jwt_required()
+def get_instructor_classes():
+    """Get all classes that the instructor teaches."""
+    try:
+        current_user_id = get_jwt_identity()
+        current_app.logger.info(f"📌 JWT Identity: {current_user_id}")
+
+        instructor = User.query.get(current_user_id)
+        if not instructor:
+            current_app.logger.warning("⚠️ No user found for given ID.")
+        elif not is_user_instructor(instructor):
+            current_app.logger.warning("⚠️ User is not an instructor.")
+
+        if not instructor or not is_user_instructor(instructor):
+            return jsonify({"error": "Unauthorized"}), 403
+
+        instructor_enrollments = Enrollment.query.filter_by(
+            user_id=current_user_id, 
+            role="instructor"
+        ).all()
+
+        current_app.logger.info(f"🧾 Found {len(instructor_enrollments)} instructor enrollments.")
+
+        classes_data = []
+        for enrollment in instructor_enrollments:
+            section = enrollment.section
+            class_obj = section.class_
+            
+            student_count = Enrollment.query.filter_by(
+                section_id=section.id,
+                role="student"
+            ).count()
+            
+            case_count = PracticeCase.query.filter_by(class_id=class_obj.id).count()
+
+            current_app.logger.info(
+                f"📚 Class: {class_obj.course_code} Section {section.section_code} | "
+                f"Students: {student_count} | Cases: {case_count}"
+            )
+            
+            classes_data.append({
+                "class_id": class_obj.id,
+                "section_id": section.id,
+                "course_code": class_obj.course_code,
+                "title": class_obj.title,
+                "section_code": section.section_code,
+                "student_count": student_count,
+                "case_count": case_count,
+                "institution": class_obj.institution.name if class_obj.institution else None,
+                "term": {
+                    "id": section.term.id,
+                    "name": section.term.name,
+                    "code": section.term.code
+                } if section.term else None
+            })
+
+        return jsonify(classes_data), 200
+
+    except Exception as e:
+        import traceback
+        current_app.logger.error(f"❌ Error fetching instructor classes: {str(e)}")
+        current_app.logger.debug(traceback.format_exc())
+        return jsonify({"error": "Failed to retrieve classes"}), 500
+
+
+
 @instructors.route("/students/engagement", methods=["GET"])
 @jwt_required()
 def get_students_engagement():
+    """Get student engagement data, optionally filtered by class."""
     current_user_id = get_jwt_identity()
     instructor = User.query.get(current_user_id)
 
-    if not instructor or instructor.is_student:
+    if not instructor or not is_user_instructor(instructor):
         return jsonify({"error": "Unauthorized"}), 403
 
-    # Filter students by instructor's institution and class
-    students = User.query.filter_by(
-        institution=instructor.institution,
-        class_name=instructor.class_name,
-        is_student=True
-    ).all()
+    # Get optional class filter
+    class_id = request.args.get("class_id", type=int)
+    section_id = request.args.get("section_id", type=int)
 
-    # Format student data for frontend with only completed conversations counted
-    student_data = [
-        {
+    if section_id:
+        # Filter by specific section
+        students = User.query.join(Enrollment).filter(
+            Enrollment.section_id == section_id,
+            Enrollment.role == "student"
+        ).all()
+    elif class_id:
+        # Filter by all sections of a specific class
+        students = User.query.join(Enrollment).join(Section).filter(
+            Section.class_id == class_id,
+            Enrollment.role == "student"
+        ).all()
+    else:
+        # All students for all classes this instructor teaches
+        students = get_students_for_instructor(instructor)
+
+    student_data = []
+    for student in students:
+        # If we're filtering by class, only count conversations for that class
+        if class_id:
+            conversation_count = Conversation.query.join(PracticeCase).filter(
+                Conversation.user_id == student.id,
+                Conversation.completed == True,
+                PracticeCase.class_id == class_id
+            ).count()
+        else:
+            conversation_count = Conversation.query.filter_by(
+                user_id=student.id, 
+                completed=True
+            ).count()
+
+        student_data.append({
             "id": student.id,
-            "name": f"{student.first_name} {student.last_name}",
-            "sessionsCompleted": Conversation.query.filter_by(student_id=student.id, completed=True).count(),
+            "name": student.full_name,
+            "email": student.email,
+            "sessionsCompleted": conversation_count,
             "lastActive": format_last_active(student.last_login)
-        }
-        for student in students
-    ]
+        })
 
     return jsonify(student_data), 200
 
@@ -55,42 +152,56 @@ def get_students_engagement():
 @jwt_required()
 def get_practice_case_analytics():
     """
-    Retrieve analytics data for practice cases.
-    Excludes instructor conversations to avoid inflating student usage counts.
+    Retrieve analytics data for practice cases, optionally filtered by class.
     """
     try:
         current_user_id = get_jwt_identity()
         instructor = User.query.get(current_user_id)
 
-        if not instructor or instructor.is_student:
+        if not instructor or not is_user_instructor(instructor):
             return jsonify({"error": "Unauthorized"}), 403
 
-        # Get all students (not instructors) in the instructor's class
-        students = User.query.filter_by(
-            institution=instructor.institution,
-            class_name=instructor.class_name,
-            is_student=True
-        ).all()
+        # Get optional class filter
+        class_id = request.args.get("class_id", type=int)
+        section_id = request.args.get("section_id", type=int)
 
-        student_ids = {student.id for student in students}  # Set for fast lookup
+        if section_id:
+            # Get students from specific section
+            students = User.query.join(Enrollment).filter(
+                Enrollment.section_id == section_id,
+                Enrollment.role == "student"
+            ).all()
+            
+            # Get the class for this section
+            section = Section.query.get(section_id)
+            class_ids = {section.class_id} if section else set()
+        elif class_id:
+            # Get students from all sections of this class
+            students = User.query.join(Enrollment).join(Section).filter(
+                Section.class_id == class_id,
+                Enrollment.role == "student"
+            ).all()
+            class_ids = {class_id}
+        else:
+            # All students and classes for this instructor
+            students = get_students_for_instructor(instructor)
+            class_ids = {e.section.class_id for e in instructor.enrollments if e.role == "instructor"}
 
-        # Get all practice cases for the instructor's class
-        cases = PracticeCase.query.filter_by(institution=instructor.institution, class_name=instructor.class_name).all()
+        user_ids = {student.id for student in students}
+        cases = PracticeCase.query.filter(PracticeCase.class_id.in_(class_ids)).all()
 
         analytics_data = []
         for case in cases:
-            # ✅ Filter out instructor conversations
             student_conversations = Conversation.query.filter(
                 Conversation.practice_case_id == case.id,
                 Conversation.completed == True,
-                Conversation.student_id.in_(student_ids)  # ✅ Only count students
+                Conversation.user_id.in_(user_ids)
             ).all()
 
-            total_students = len(set(conv.student_id for conv in student_conversations))  # Unique students
-            total_time = sum(conv.duration for conv in student_conversations if conv.duration)  # Sum total time
-            avg_time = total_time / total_students if total_students else 0  # Avoid division by zero
+            total_students = len(set(conv.user_id for conv in student_conversations))
+            total_time = sum(conv.duration for conv in student_conversations if conv.duration)
+            avg_time = total_time / total_students if total_students else 0
 
-            # ✅ Compute completion rate correctly
             total_class_students = len(students)
             completion_rate = (total_students / total_class_students * 100) if total_class_students else 0
 
@@ -98,8 +209,8 @@ def get_practice_case_analytics():
                 "id": case.id,
                 "title": case.title,
                 "studentsUsed": total_students,
-                "avgTimeSpent": avg_time,  # Time in seconds
-                "completionRate": round(completion_rate, 2) if total_students else 0
+                "avgTimeSpent": avg_time,
+                "completionRate": round(completion_rate, 2)
             })
 
         return jsonify(analytics_data), 200
@@ -109,137 +220,159 @@ def get_practice_case_analytics():
         return jsonify({"error": "Failed to retrieve analytics"}), 500
 
 
-# Add these routes to routes/instructor.py
-
-@instructors.route("/students/add", methods=["POST"])
+@instructors.route("/practice-cases", methods=["GET"])
 @jwt_required()
-def add_student():
-    """
-    Allows instructors to add a student to their class.
-    If the student already exists but has no class, reactivates them.
-    """
+def get_practice_cases():
+    """Get practice cases for the instructor's classes, optionally filtered by class."""
     try:
         current_user_id = get_jwt_identity()
         instructor = User.query.get(current_user_id)
 
-        if not instructor or instructor.is_student:
+        if not instructor or not is_user_instructor(instructor):
             return jsonify({"error": "Unauthorized"}), 403
 
-        # Get request data
+        # Get optional class filter
+        class_id = request.args.get("class_id", type=int)
+        
+        if class_id:
+            # Verify instructor teaches this class
+            instructor_enrollment = Enrollment.query.join(Section).filter(
+                Enrollment.user_id == current_user_id,
+                Enrollment.role == "instructor",
+                Section.class_id == class_id
+            ).first()
+            
+            if not instructor_enrollment:
+                return jsonify({"error": "Unauthorized to view this class"}), 403
+                
+            cases = PracticeCase.query.filter_by(class_id=class_id).all()
+        else:
+            # All classes the instructor teaches
+            class_ids = {e.section.class_id for e in instructor.enrollments if e.role == "instructor"}
+            cases = PracticeCase.query.filter(PracticeCase.class_id.in_(class_ids)).all()
+
+        cases_data = []
+        for case in cases:
+            cases_data.append({
+                "id": case.id,
+                "title": case.title,
+                "description": case.description,
+                "class_id": case.class_id,
+                "published": case.published,
+                "created_at": case.created_at.isoformat() if case.created_at else None
+            })
+
+        return jsonify(cases_data), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching practice cases: {str(e)}")
+        return jsonify({"error": "Failed to retrieve practice cases"}), 500
+
+
+# Keep existing routes but add class filtering support
+@instructors.route("/students/add", methods=["POST"])
+@jwt_required()
+def add_student():
+    """Allows instructors to add a student to their section."""
+    try:
+        current_user_id = get_jwt_identity()
+        instructor = db.session.get(User, current_user_id)
+
+        if not instructor or not is_user_instructor(instructor):
+            return jsonify({"error": "Unauthorized"}), 403
+
+        # Get section_id from request, or use instructor's primary section
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "Missing request body"}), 400
+        section_id = data.get("section_id")
+        
+        if section_id:
+            # Verify instructor teaches this section
+            section = Section.query.get(section_id)
+            instructor_enrollment = Enrollment.query.filter_by(
+                user_id=current_user_id,
+                section_id=section_id,
+                role="instructor"
+            ).first()
+            
+            if not instructor_enrollment:
+                return jsonify({"error": "Unauthorized to add students to this section"}), 403
+        else:
+            # Use instructor's primary section (backward compatibility)
+            section = get_instructor_section(instructor)
+            
+        if not section:
+            return jsonify({"error": "Section not found"}), 404
 
         email = data.get("email")
         first_name = data.get("first_name", "")
         last_name = data.get("last_name", "")
-        
+
         if not email:
             return jsonify({"error": "Email is required"}), 400
 
-        # Create a temporary user instance to encrypt the data for searching
+        # Rest of the existing add_student logic...
         temp_user = User()
         encrypted_email = temp_user.encrypt_data(email)
-        
         if not encrypted_email:
-            current_app.logger.error("Failed to encrypt email for search.")
             return jsonify({"error": "Email encryption failed"}), 500
 
-        # First, check if a user with this email already exists
-        existing_user = None
-        
-        # Try to find by encrypted email
-        if encrypted_email:
-            existing_user = User.query.filter_by(email_encrypted=encrypted_email).first()
-        
-        # If no exact match, try decrypting all emails (less efficient but more thorough)
+        existing_user = User.query.filter_by(email_encrypted=encrypted_email).first()
+
         if not existing_user:
-            for user in User.query.all():
-                if user.email == email:  # This uses the property getter which decrypts
-                    existing_user = user
-                    break
-        
-        # If the user exists
-        if existing_user:
-            # Check if they're already in a class
-            if existing_user.class_name:
-                # If they're in the same class as the instructor is trying to add them to
-                if existing_user.institution == instructor.institution and existing_user.class_name == instructor.class_name:
-                    return jsonify({"error": f"Student {email} is already in your class"}), 400
-                else:
-                    return jsonify({"error": f"Student {email} already exists in another class"}), 400
-            
-            # User exists but has no class (was removed or never assigned) - reactivate them
-            current_app.logger.info(f"Reactivating existing student: {email} in class {instructor.class_name}")
-            
-            # Update their information
-            if first_name and first_name != existing_user.first_name:
-                encrypted_first_name = temp_user.encrypt_data(first_name)
-                existing_user.first_name_encrypted = encrypted_first_name
-                
-            if last_name and last_name != existing_user.last_name:
-                encrypted_last_name = temp_user.encrypt_data(last_name)
-                existing_user.last_name_encrypted = encrypted_last_name
-            
-            # Assign to instructor's class
-            existing_user.institution = instructor.institution
-            existing_user.class_name = instructor.class_name
-            existing_user.section = instructor.section
-            
+            new_student = User(
+                email_encrypted=encrypted_email,
+                first_name_encrypted=temp_user.encrypt_data(first_name),
+                last_name_encrypted=temp_user.encrypt_data(last_name),
+                password_hash=generate_password_hash("placeholder_will_need_reset"),
+                is_registered=False,
+                institution=section.class_.institution.name
+            )
+            db.session.add(new_student)
+            db.session.flush()
+
+            db.session.add(Enrollment(user=new_student, section=section, role="student"))
             db.session.commit()
-            
-            # Send response with reactivated user
+
             return jsonify({
-                "message": "Student reactivated successfully",
+                "message": "Student added successfully",
                 "student": {
-                    "id": existing_user.id,
-                    "name": f"{existing_user.first_name or first_name} {existing_user.last_name or last_name}".strip() or "Unregistered",
+                    "id": new_student.id,
+                    "name": new_student.full_name or "Unregistered",
                     "email": email,
-                    "sessionsCompleted": Conversation.query.filter_by(student_id=existing_user.id, completed=True).count(),
-                    "lastActive": format_last_active(existing_user.last_login)
+                    "sessionsCompleted": 0,
+                    "lastActive": "Never"
                 },
-                "reactivated": True
-            }), 200
+                "reactivated": False
+            }), 201
 
-        # If user doesn't exist, create a new one
-        # Only encrypt names if provided
-        encrypted_first_name = temp_user.encrypt_data(first_name) if first_name else None
-        encrypted_last_name = temp_user.encrypt_data(last_name) if last_name else None
-        
-        # Create new user with encrypted data
-        # Use a placeholder password since the column is NOT NULL
-        dummy_password = "placeholder_will_need_reset"
-        
-        new_student = User(
-            email_encrypted=encrypted_email,
-            first_name_encrypted=encrypted_first_name,
-            last_name_encrypted=encrypted_last_name,
-            password_hash=generate_password_hash(dummy_password),
-            institution=instructor.institution,
-            class_name=instructor.class_name,
-            section=instructor.section,
-            is_student=True,
-            is_registered=False
-        )
+        existing_enrollment = Enrollment.query.filter_by(
+            user_id=existing_user.id,
+            section_id=section.id,
+            role="student"
+        ).first()
 
-        # Log student creation attempt
-        current_app.logger.info(f"Instructor {instructor.id} adding new student: {email}")
+        if existing_enrollment:
+            return jsonify({"error": f"Student {email} is already in your class"}), 400
 
-        # Add user to database
-        db.session.add(new_student)
+        if first_name and not existing_user.first_name:
+            existing_user.first_name_encrypted = temp_user.encrypt_data(first_name)
+        if last_name and not existing_user.last_name:
+            existing_user.last_name_encrypted = temp_user.encrypt_data(last_name)
+
+        db.session.add(Enrollment(user=existing_user, section=section, role="student"))
         db.session.commit()
 
         return jsonify({
-            "message": "Student added successfully",
+            "message": "Student reactivated successfully",
             "student": {
-                "id": new_student.id,
-                "name": f"{first_name} {last_name}".strip() or "Unregistered",
+                "id": existing_user.id,
+                "name": existing_user.full_name or "Unregistered",
                 "email": email,
-                "sessionsCompleted": 0,
-                "lastActive": "Never"
+                "sessionsCompleted": Conversation.query.filter_by(user_id=existing_user.id, completed=True).count(),
+                "lastActive": format_last_active(existing_user.last_login)
             },
-            "reactivated": False
-        }), 201
+            "reactivated": True
+        }), 200
 
     except Exception as e:
         current_app.logger.error(f"Error adding student: {str(e)}")
@@ -247,47 +380,58 @@ def add_student():
         return jsonify({"error": f"Failed to add student: {str(e)}"}), 500
 
 
-@instructors.route("/students/remove/<int:student_id>", methods=["DELETE"])
+@instructors.route("/students/remove/<int:user_id>", methods=["DELETE"])
 @jwt_required()
-def remove_student(student_id):
-    """
-    Allows instructors to remove a student from their class
-    This doesn't delete the student record, just nullifies the class assignment
-    """
+def remove_student(user_id):
+    """Remove a student from the instructor's section without deleting the user."""
     try:
         current_user_id = get_jwt_identity()
-        instructor = User.query.get(current_user_id)
+        instructor = db.session.get(User, current_user_id)
 
-        if not instructor or instructor.is_student:
+        if not instructor or not is_user_instructor(instructor):
             return jsonify({"error": "Unauthorized"}), 403
 
-        # Find the student
-        student = User.query.get(student_id)
-        if not student:
-            return jsonify({"error": "Student not found"}), 404
+        # Get section_id from query params if provided
+        section_id = request.args.get("section_id", type=int)
+        
+        if section_id:
+            # Verify instructor teaches this section
+            instructor_enrollment = Enrollment.query.filter_by(
+                user_id=current_user_id,
+                section_id=section_id,
+                role="instructor"
+            ).first()
+            
+            if not instructor_enrollment:
+                return jsonify({"error": "Unauthorized"}), 403
+                
+            section = Section.query.get(section_id)
+        else:
+            section = get_instructor_section(instructor)
+            
+        if not section:
+            return jsonify({"error": "Section not found"}), 404
 
-        # Verify the student belongs to this instructor's class
-        if (student.institution != instructor.institution or 
-            student.class_name != instructor.class_name):
-            return jsonify({"error": "This student is not in your class"}), 403
+        enrollment = Enrollment.query.filter_by(
+            user_id=user_id, 
+            section_id=section.id, 
+            role="student"
+        ).first()
+        
+        if not enrollment:
+            return jsonify({"error": "Student not found in your section"}), 404
 
-        # Store student info for the response
-        student_name = f"{student.first_name} {student.last_name}"
-        
-        # Remove class assignment but keep the student record
-        student.class_name = None
-        student.section = None
-        
-        # Log the removal
-        current_app.logger.info(f"Instructor {instructor.id} removing student {student_id} from class")
-        
+        student = db.session.get(User, user_id)
+        name = student.full_name
+
+        db.session.delete(enrollment)
         db.session.commit()
-        
+
         return jsonify({
-            "message": f"Student {student_name} removed from class",
-            "student_id": student_id
+            "message": f"Student {name} removed from section",
+            "user_id": user_id
         }), 200
-        
+
     except Exception as e:
         current_app.logger.error(f"Error removing student: {str(e)}")
         db.session.rollback()
