@@ -78,6 +78,8 @@ const UpdatedSidebar = ({ className, currentRole }: SidebarProps) => {
 
   const masterMenuItems: MenuItem[] = [
     { icon: Home, label: "Dashboard", path: "/master/dashboard", id: "home" },
+    { icon: FileText, label: "Manage Classes", path: "/master/classes", id: "classes" },
+    { icon: Users, label: "Manage Users", path: "/master/users", id: "users" },
   ];
 
   // Determine which menu items to use based on currentRole

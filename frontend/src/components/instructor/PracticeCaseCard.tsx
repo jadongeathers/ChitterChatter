@@ -21,19 +21,27 @@ interface PracticeCase {
   min_time: number;
   max_time: number;
   accessible_on?: string;
-  published?: boolean;
+  published: boolean;
+  class_id: number;
+  created_at?: string;
 }
 
 interface PracticeCaseCardProps {
   practiceCase: PracticeCase;
+  onCaseUpdate?: (updatedCase: PracticeCase) => void;  // ✅ Add this
+  onCaseDelete?: (deletedCaseId: number) => void;      // ✅ Add this
 }
 
-const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({ practiceCase }) => {
+const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({ 
+  practiceCase, 
+  onCaseUpdate,  // ✅ Add this
+  onCaseDelete   // ✅ Add this
+}) => {
   const navigate = useNavigate();
   const [isPublished, setIsPublished] = useState(practiceCase.published || false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Toggle Publish/Unpublish
+  // ✅ Updated Toggle Publish/Unpublish
   const handlePublishToggle = async () => {
     try {
       const response = await fetchWithAuth(`/api/practice_cases/publish/${practiceCase.id}`, {
@@ -46,7 +54,17 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({ practiceCase }) => 
 
       if (!response.ok) throw new Error("Failed to update publish status");
 
-      setIsPublished(!isPublished);
+      const newPublishedState = !isPublished;
+      setIsPublished(newPublishedState);
+
+      // ✅ Notify parent component of the update
+      if (onCaseUpdate) {
+        const updatedCase = { 
+          ...practiceCase, 
+          published: newPublishedState 
+        };
+        onCaseUpdate(updatedCase);
+      }
     } catch (error) {
       console.error("Error updating publish status:", error);
     }
