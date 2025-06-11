@@ -2,7 +2,9 @@ from datetime import datetime, timezone
 from app.models import db
 
 class SystemFeedback(db.Model):
-    """Model for storing system feedback from users."""
+    """
+    Model for storing system feedback from users.
+    """
     __tablename__ = "system_feedback"
 
     id = db.Column(db.Integer, primary_key=True)
