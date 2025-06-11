@@ -1,3 +1,4 @@
+// App.tsx  (or wherever your AppRoutes lives)
 import { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import Layout from "@/components/common/Layout";
@@ -21,17 +22,20 @@ import ConversationDetailPage from "./pages/student/ConversationDetail";
 import FeedbackHelp from "./pages/student/FeedbackHelp";
 import InstructorFeedbackHelp from "./pages/instructor/FeedbackHelp";
 import InstructorSettings from "./pages/instructor/Settings";
+import ClassesPage from "@/pages/master/ClassesPage";
+import UsersPage from "@/pages/master/UsersPage";
 
-// New Imports for Public Pages
+// Context Providers
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ClassProvider } from "@/contexts/ClassContext";
+import { StudentClassProvider } from "@/contexts/StudentClassContext";
+
+// Public pages
 import LandingPage from "@/pages/common/LandingPage";
 import ResearchTeam from "@/pages/common/ResearchTeam";
 
-import { fetchWithAuth } from "./utils/api";
-
-// Define the UserRole type to match what Layout expects
 type UserRole = "student" | "instructor" | "master";
 
-// Debug component to help find routing issues
 const NoMatch = () => {
   const location = useLocation();
   return (
@@ -43,15 +47,17 @@ const NoMatch = () => {
   );
 };
 
-function App() {
+const AppRoutes = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated, isLoading: authIsLoading, role: authRole } = useAuth();
 
   const [currentRole, setCurrentRole] = useState<UserRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // 1) First, banish scroll on /login and /register
   useEffect(() => {
-    // Manage scroll lock for login/register pages
     if (["/login", "/register"].includes(location.pathname)) {
       document.body.classList.add("disable-scroll");
     } else {
@@ -62,103 +68,164 @@ function App() {
     };
   }, [location.pathname]);
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // 2) Next, wait until AuthContext is done checking /api/auth/me
+  //    so that we know exactly if isAuthenticated === true or false.
   useEffect(() => {
-    // Define public routes that don't require a user fetch.
-    const publicRoutes = ["/login", "/register", "/research-team"];
-    
-    // If user is on a public route or on the landing page ("/"), skip fetching user data
-    if (publicRoutes.includes(location.pathname) || location.pathname === "/") {
-      setIsLoading(false);
+    if (authIsLoading) {
+      // Still waiting for /api/auth/me
       return;
     }
-    
-    const fetchUser = async () => {
-      try {
-        const token = localStorage.getItem("access_token");
-        if (!token) {
-          setIsLoading(false);
-          if (location.pathname !== "/") navigate("/login");
-          return;
-        }
 
-        const response = await fetchWithAuth("/api/auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+    // AuthContext done. If user is logged in, set currentRole from AuthContext
+    if (isAuthenticated && authRole) {
+      setCurrentRole(authRole);
+    } else {
+      // No token or invalid → ensure role = null
+      setCurrentRole(null);
+    }
 
-        if (!response.ok) throw new Error("Failed to fetch user");
+    setIsLoading(false);
+  }, [authIsLoading, isAuthenticated, authRole]);
 
-        const user = await response.json();
-        setCurrentRole(user.is_master ? "master" : (user.is_student ? "student" : "instructor"));
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching user:", error);
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user_role");
-        setIsLoading(false);
-        if (location.pathname !== "/") navigate("/login");
-      }
-    };
+  // While we’re waiting for AuthContext to settle, render nothing
+  if (isLoading) {
+    return null;
+  }
 
-    fetchUser();
-  }, [navigate, location.pathname]);
-
-  if (isLoading) return null;
-
-  // If there's no token and the user is at the root path, render the landing page.
+  // ───────────────────────────────────────────────────────────────────────────
+  // 3) Public routes (these never mount ClassProvider or StudentClassProvider)
+  //    If the user is at “/” with no token → landing. 
   const token = localStorage.getItem("access_token");
   if (!token && location.pathname === "/") {
     return <LandingPage />;
   }
 
-  return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/research-team" element={<ResearchTeam />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+  //    If the user is on any of the explicitly “public” paths → just render them
+  const publicRoutes = ["/login", "/register", "/research-team"];
+  if (publicRoutes.includes(location.pathname)) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/research-team" element={<ResearchTeam />} />
+        <Route path="*" element={<NoMatch />} />
+      </Routes>
+    );
+  }
 
-      {/* Protected Routes */}
-      <Route path="/*" element={<ProtectedRoute />}>
-        <Route element={<Layout currentRole={currentRole as UserRole} />}>
-          <Route index element={
-            currentRole === "master"
-              ? <MasterDashboard />
-              : currentRole === "student"
-                ? <StudentDashboard />
-                : <InstructorDashboard />
-          } />
-          {/* Common Routes */}
-          <Route path="dashboard" element={<StudentDashboard />} />
-          <Route path="practice/*" element={<Practice />} />
-          <Route path="progress" element={<Progress />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="practice/:id" element={<VoiceChat />} />
-          <Route path="feedback/:id" element={<Feedback />} />
-          <Route path="conversations/:id" element={<ConversationDetailPage />} />
-          <Route path="feedback-help" element={<FeedbackHelp />} />
+  // ───────────────────────────────────────────────────────────────────────────
+  // 4) At this point:
+  //    • We know isAuthenticated = true OR false (AuthContext is done).
+  //    • We are not on “/” (landing) and not on a public route.
+  //    • If isAuthenticated=false, force a redirect to /login.
+  if (!isAuthenticated) {
+    navigate("/login");
+    return null; // don’t render anything else
+  }
 
-          {/* Master Routes */}
-          <Route path="master" element={<MasterDashboard />} />
-          <Route path="master/dashboard" element={<MasterDashboard />} />
+  // ───────────────────────────────────────────────────────────────────────────
+  // 5) Now we know for sure isAuthenticated===true.
+  //    Decide which role‐based “branch” to render:
+  //    – instructor
+  //    – student
+  //    – master
+  //    (We already set currentRole from AuthContext above.)
+  if (currentRole === "instructor") {
+    return (
+      <ClassProvider userRole={currentRole}>
+        <Routes>
+          {/* You can still expose “/research-team” here if you like, but it’s safe to put it above. */}
+          {/* Protected Routes (the user is an instructor!) */}
+          <Route path="/*" element={<ProtectedRoute />}>
+            <Route element={<Layout currentRole={currentRole as UserRole} />}>
+              <Route index element={<InstructorDashboard />} />
 
-          {/* Instructor Routes */}
-          <Route path="instructor/dashboard" element={<InstructorDashboard />} />
-          <Route path="instructor/lessons" element={<Lessons />} />
-          <Route path="instructor/review/:caseId" element={<ReviewCase />} />
-          <Route path="instructor/review/new" element={<ReviewCase isNew />} />
-          <Route path="instructor/feedback/:caseId" element={<ReviewFeedback />} />
-          <Route path="instructor/students" element={<Students />} />
-          <Route path="instructor/analytics" element={<Analytics />} />
-          <Route path="instructor/feedback-help" element={<InstructorFeedbackHelp />} />
-          <Route path="instructor/settings" element={<InstructorSettings />} />
-          {/* Debug catch-all route */}
+              {/* Master Routes (although an instructor probably won’t hit these) */}
+              <Route path="master" element={<MasterDashboard />} />
+              <Route path="master/dashboard" element={<MasterDashboard />} />
+              <Route path="master/classes" element={<ClassesPage />} />
+              <Route path="master/users" element={<UsersPage />} />
+
+              {/* Instructor‐only pages */}
+              <Route path="instructor/dashboard" element={<InstructorDashboard />} />
+              <Route path="instructor/lessons" element={<Lessons />} />
+              <Route path="instructor/review/:caseId" element={<ReviewCase />} />
+              <Route path="instructor/review/new" element={<ReviewCase isNew />} />
+              <Route path="instructor/feedback/:caseId" element={<ReviewFeedback />} />
+              <Route path="instructor/students" element={<Students />} />
+              <Route path="instructor/analytics" element={<Analytics />} />
+              <Route path="instructor/feedback-help" element={<InstructorFeedbackHelp />} />
+              <Route path="instructor/settings" element={<InstructorSettings />} />
+
+              {/* Catch‐all for anything else */}
+              <Route path="*" element={<NoMatch />} />
+            </Route>
+          </Route>
+
+          {/* In case you typed a random path that didn't match anything in the <ProtectedRoute> */}
           <Route path="*" element={<NoMatch />} />
-        </Route>
-      </Route>
+        </Routes>
+      </ClassProvider>
+    );
+  } 
+  else if (currentRole === "student") {
+    return (
+      <StudentClassProvider userRole={currentRole}>
+        <Routes>
+          {/* Protected student routes */}
+          <Route path="/*" element={<ProtectedRoute />}>
+            <Route element={<Layout currentRole={currentRole as UserRole} />}>
+              <Route index element={<StudentDashboard />} />
 
-      <Route path="*" element={<NoMatch />} />
-    </Routes>
+              <Route path="dashboard" element={<StudentDashboard />} />
+              <Route path="practice/*" element={<Practice />} />
+              <Route path="progress" element={<Progress />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="practice/:id" element={<VoiceChat />} />
+              <Route path="feedback/:id" element={<Feedback />} />
+              <Route path="conversations/:id" element={<ConversationDetailPage />} />
+              <Route path="feedback-help" element={<FeedbackHelp />} />
+
+              <Route path="*" element={<NoMatch />} />
+            </Route>
+          </Route>
+
+          <Route path="*" element={<NoMatch />} />
+        </Routes>
+      </StudentClassProvider>
+    );
+  } 
+  else {
+    // currentRole === "master"
+    return (
+      <Routes>
+        {/* Master’s public pages (optional) */}
+        <Route path="/research-team" element={<ResearchTeam />} />
+
+        {/* Master’s protected pages */}
+        <Route path="/*" element={<ProtectedRoute />}>
+          <Route element={<Layout currentRole={currentRole as UserRole} />}>
+            <Route index element={<MasterDashboard />} />
+
+            <Route path="master" element={<MasterDashboard />} />
+            <Route path="master/dashboard" element={<MasterDashboard />} />
+            <Route path="master/classes" element={<ClassesPage />} />
+            <Route path="master/users" element={<UsersPage />} />
+            <Route path="*" element={<NoMatch />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<NoMatch />} />
+      </Routes>
+    );
+  }
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }
-
-export default App;
