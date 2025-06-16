@@ -214,7 +214,9 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         5. **Instructor Notes**:
         ${instructorNotes}
     `.trim();
-
+    const formattedAccessibleOn = practiceCase?.accessible_on 
+      ? new Date(practiceCase.accessible_on).toISOString()
+      : "";
     try {
       const endpoint = isNew
         ? "/api/practice_cases/add_case"
@@ -233,17 +235,22 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
           system_prompt: updatedPrompt,
           min_time: Math.floor(practiceCase.min_time),
           max_time: Math.floor(practiceCase.max_time),
-          accessible_on: practiceCase.accessible_on,
+          accessible_on: formattedAccessibleOn,
           voice: voice,
           language_code: languageCode,
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to update practice case");
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("Server error response:", errorData);
+        throw new Error(`Failed to update practice case: ${errorData}`);
+      }
 
       alert("Practice case updated successfully!");
       navigate("/instructor/lessons");
     } catch (error) {
+      
       console.error("Error updating practice case:", error);
     }
   };

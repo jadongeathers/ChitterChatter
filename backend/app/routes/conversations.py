@@ -125,9 +125,13 @@ def end_conversation(conversation_id):
             current_app.logger.error(f"❌ Feedback prompt missing for practice case {practice_case.id}")
             return jsonify({"error": "Feedback prompt not found"}), 500
 
+        start_time = conversation.start_time
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=timezone.utc)
+
         # ✅ Set conversation end time & duration
         conversation.end_time = datetime.now(timezone.utc)
-        conversation.duration = int((conversation.end_time - conversation.start_time).total_seconds())
+        conversation.duration =  int((conversation.end_time - start_time).total_seconds())
 
         # ✅ Determine if conversation meets minimum required time
         if conversation.duration >= practice_case.min_time:
@@ -255,3 +259,135 @@ def get_latest_conversation():
     except Exception as e:
         current_app.logger.error(f"❌ [ERROR] Failed to fetch recent conversation for user {student_id if 'student_id' in locals() else 'Unknown'}: {str(e)}")
         return jsonify({"error": "Failed to fetch recent conversation"}), 500
+    
+@conversations.route("/feedback-chat", methods=["POST"])  # Use 'conversations' not 'conversations_bp'
+@jwt_required()
+def feedback_chat():
+    """Handle feedback chatbot conversations using OpenAI API"""
+    try:
+        current_user_id = get_jwt_identity()
+        data = request.json
+        
+        conversation_id = data.get('conversation_id')
+        user_message = data.get('user_message')
+        conversation_history = data.get('conversation_history', [])
+        original_conversation = data.get('original_conversation', [])
+        existing_feedback = data.get('existing_feedback', '')
+        
+        if not conversation_id or not user_message:
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        # Verify user owns this conversation
+        conversation = db.session.query(Conversation).filter_by(
+            id=conversation_id, 
+            student_id=current_user_id
+        ).first()
+        
+        if not conversation:
+            return jsonify({"error": "Conversation not found"}), 404
+        
+        # Initialize OpenAI client
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        
+        # Format the original conversation transcript
+        formatted_transcript = format_conversation_for_ai(original_conversation)
+        
+        # Build context for OpenAI - Include the original conversation transcript
+        system_prompt = f"""You are an AI tutor--a Virtual Practice Partner (VPP)--that provides personalized feedback to students practicing their language skills. You must use English to provide feedback. You should not make it clear that you are AI.
+
+ORIGINAL PRACTICE CONVERSATION TRANSCRIPT:
+{formatted_transcript}
+
+EXISTING AI FEEDBACK (if any):
+{existing_feedback if existing_feedback else "No previous feedback provided."}
+
+To provide feedback, you will use the transcript above from a student-VPP interaction. Your responses should be anchored in the transcript.
+
+Your primary goal is to help students **improve proficiency, comfort, and confidence** in their target language.
+
+Provide feedback in a **constructive, supportive, and encouraging tone**.
+Follow the structure of the three sections below. Keep your response conversational and ask them to pick one option or tell you what they're most curious about. Don't give detailed feedback yet - wait for their choice.
+Keep responses focused and conversational. Don't overwhelm them with too much information at once.
+Other than section 1, wait for the student to respond after each feedback.
+
+SECTION 1:
+Welcome the student to the "interactive feedback portion of today's conversation." Positively encourage and affirm the student on the effort and work the student did today. You will then provide a short holistic summary of how the student did. You will base this summary on the students performance on several aspects, such as how well the student...
+Do not prompt the student to ask questions yet, just provide a summary of their performance.
+
+- Fulfilled instructor-given goals ('Curricular Goals' and 'Key Items to Use')
+- Utilized contextually significant vocabulary 
+- Followed grammar constructions 
+- Elaborated their ideas/Used complexity 
+
+Each aspect should be expressed in 1-2 short sentences.
+
+SECTION 2:
+To start, you will provide feedback to the student using the 'feedback sandwich', which follows this structure:
+
+1. Provide a piece of positive feedback based on which 'Curricular Goals' and 'Key Items to Use' were fulfilled in the transcript. 
+2. Provide constructive criticism for the student. 
+3. Continue to the second positive feedback.
+
+SECTION 3:
+After feedback has been provided, allow the student to ask any clarifying questions or further explanation for the provided feedback.
+
+Guide the student in revising their transcript. You will suggest 3 responses that the student can explore related to their performance on their activity. There should be 1 question related to each option:
+
+Option 1: Hypothesis Testing - Prompt the student by highlighting a specific part of their text and inviting them to self-correct. You should first present negative evidence and ask an open-ended question, encouraging reflection. After the student responds, you should offer positive evidence by modeling a more accurate or natural phrasing.
+
+Option 2: Further exploration - Prompt the student into exploring contextually related content to deepen their understanding by offering additional support. Offer related vocabulary, expression, or grammatical structure that could strengthen or expand the student's original statement.
+
+Option 3: Continue on - Prompt the student into continuing onto the next section of the interactive feedback, the student self-guided review.
+
+Answer the student's questions based on the conversation transcript above and provide specific examples from their practice session."""
+
+        # Prepare messages for OpenAI
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Add conversation history (limit to last 10 messages to avoid token limits)
+        recent_history = conversation_history[-10:] if len(conversation_history) > 10 else conversation_history
+        messages.extend(recent_history)
+        
+        # Add current user message
+        messages.append({"role": "user", "content": user_message})
+        
+        # Call OpenAI API
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
+            max_tokens=400,
+            temperature=0.7,
+            presence_penalty=0.1,
+            frequency_penalty=0.1
+        )
+        
+        ai_response = response.choices[0].message.content.strip()
+        
+        return jsonify({
+            "response": ai_response,
+            "status": "success"
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error in feedback chat: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+def format_conversation_for_ai(messages):
+    """Format conversation messages for AI context"""
+    if not messages:
+        return "No conversation data available."
+    
+    formatted = []
+    for msg in messages:
+        # Handle different message formats that might come from frontend
+        if isinstance(msg, dict):
+            role = "Student" if msg.get('role') == 'user' else "Practice Partner"
+            content = msg.get('content', '')
+        else:
+            # Fallback for other formats
+            role = "Unknown"
+            content = str(msg)
+        
+        formatted.append(f"{role}: {content}")
+    
+    return "\n".join(formatted)

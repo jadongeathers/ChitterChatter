@@ -252,7 +252,7 @@ const VoiceChat: React.FC = () => {
           await response.json();
           // Keep the waiting view visible and delay navigation for a smooth transition
           setTimeout(() => {
-            navigate(`/feedback/${conversationIdRef.current}`);
+            navigate(`/feedback-chat/${conversationIdRef.current}`);
           }, 1000); // additional delay to let the waiting view settle
         } catch (err) {
           console.error("Error ending conversation:", err);

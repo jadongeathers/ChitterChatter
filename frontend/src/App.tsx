@@ -10,6 +10,7 @@ import Login from "@/pages/common/Login";
 import Register from "@/pages/common/Register";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 import Feedback from "@/pages/student/Feedback";
+import FeedbackChatbot from './pages/student/FeedbackChatbot';
 import Progress from "@/pages/student/Progress";
 import Settings from "@/pages/student/Settings";
 import ReviewCase from "@/pages/instructor/ReviewCase";
@@ -133,6 +134,7 @@ function App() {
           <Route path="progress" element={<Progress />} />
           <Route path="settings" element={<Settings />} />
           <Route path="practice/:id" element={<VoiceChat />} />
+          <Route path="feedback-chat/:id" element={<FeedbackChatbot />} /> // added feedback chatbot route
           <Route path="feedback/:id" element={<Feedback />} />
           <Route path="conversations/:id" element={<ConversationDetailPage />} />
           <Route path="feedback-help" element={<FeedbackHelp />} />

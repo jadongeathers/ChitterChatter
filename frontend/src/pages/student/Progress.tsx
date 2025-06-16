@@ -194,7 +194,7 @@ const Progress: React.FC = () => {
                   whileHover={caseData.completed ? { backgroundColor: "#f3f4f6", scale: 1.01 } : {}}
                   onClick={() => {
                     if (caseData.completed && caseData.conversation_id) {
-                      navigate(`/feedback/${caseData.conversation_id}`);
+                      navigate(`/feedback-chat/${caseData.conversation_id}`);
                     }
                   }}
                 >
