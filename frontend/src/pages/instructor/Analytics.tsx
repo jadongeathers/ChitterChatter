@@ -143,13 +143,6 @@ const Analytics: React.FC = () => {
       .slice(0, 3);
   };
 
-  const getLowEngagementCases = () => {
-    return analytics
-      .filter(item => item.studentsUsed >= 3 && item.completionRate < 40)
-      .sort((a, b) => a.completionRate - b.completionRate)
-      .slice(0, 3);
-  };
-
   const getCompletionRateColor = (rate: number) => {
     if (rate >= 80) return "text-green-600 bg-green-50 border-green-200";
     if (rate >= 60) return "text-yellow-600 bg-yellow-50 border-yellow-200";
@@ -157,10 +150,47 @@ const Analytics: React.FC = () => {
     return "text-gray-400 bg-gray-50 border-gray-200";
   };
 
+  const exportToCSV = () => {
+    // Prepare CSV data
+    const headers = ['Practice Case', 'Students Used', 'Average Time (seconds)', 'Completion Rate (%)'];
+    const csvData = [
+      headers,
+      ...sortedAnalytics.map(entry => [
+        entry.title,
+        entry.studentsUsed.toString(),
+        entry.avgTimeSpent.toString(),
+        entry.completionRate.toString()
+      ])
+    ];
+  
+    // Convert to CSV string
+    const csvContent = csvData
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+  
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      
+      // Generate filename with class name and date
+      const className = selectedClass ? `${selectedClass.course_code}_` : '';
+      const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      link.setAttribute('download', `${className}analytics_${date}.csv`);
+      
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   const stats = getTotalStats();
   const sortedAnalytics = getSortedAnalytics();
   const mostUsedCases = getMostUsedCases();
-  const lowEngagementCases = getLowEngagementCases();
 
   return (
     <ClassAwareLayout
@@ -232,76 +262,6 @@ const Analytics: React.FC = () => {
               </CardContent>
             </Card>
           </div>
-
-          {/* Insights Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Most Popular Cases */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center space-x-2 text-blue-700">
-                  <TrendingUp className="h-5 w-5" />
-                  <span>Most Used Cases</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {mostUsedCases.length > 0 ? (
-                  mostUsedCases.map((item, index) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Badge className="bg-blue-600 text-white text-xs px-2 py-1">
-                          #{index + 1}
-                        </Badge>
-                        <div>
-                          <div className="font-medium text-sm truncate max-w-[200px]">{item.title}</div>
-                          <div className="text-xs text-gray-500">{formatTime(item.avgTimeSpent)} avg time</div>
-                        </div>
-                      </div>
-                      <Badge className="bg-blue-100 text-blue-800 text-sm">
-                        {item.studentsUsed} uses
-                      </Badge>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-gray-500 text-center py-4">
-                    No student activity yet
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Cases with Low Engagement */}
-            {lowEngagementCases.length > 0 && (
-              <Card className="shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center space-x-2 text-amber-700">
-                    <AlertTriangle className="h-5 w-5" />
-                    <span>Low Engagement Cases</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {lowEngagementCases.map((item, index) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Badge className="bg-amber-600 text-white text-xs px-2 py-1">
-                          Review
-                        </Badge>
-                        <div>
-                          <div className="font-medium text-sm truncate max-w-[200px]">{item.title}</div>
-                          <div className="text-xs text-gray-500">{item.studentsUsed} students tried</div>
-                        </div>
-                      </div>
-                      <Badge className="bg-amber-100 text-amber-800 text-sm">
-                        {item.completionRate}% completion
-                      </Badge>
-                    </div>
-                  ))}
-                  <div className="text-xs text-amber-700 mt-2">
-                    These cases have low completion rates with sufficient student usage
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
         </div>
       )}
 
@@ -337,7 +297,11 @@ const Analytics: React.FC = () => {
               <RefreshCcw className="h-4 w-4" />
               <span>Refresh</span>
             </Button>
-            <Button variant="outline" className="flex items-center space-x-2">
+            <Button 
+              variant="outline" 
+              className="flex items-center space-x-2"
+              onClick={exportToCSV}
+            >
               <Download className="h-4 w-4" />
               <span>Export</span>
             </Button>

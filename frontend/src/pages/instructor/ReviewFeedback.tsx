@@ -378,13 +378,6 @@ Below are the specific areas of feedback that the instructor has selected for th
               Reset All
             </Button>
             
-            <Button 
-              variant={showPreview ? "default" : "outline"}
-              onClick={() => setShowPreview(!showPreview)}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              {showPreview ? "Hide" : "Show"} Preview
-            </Button>
           </div>
         </div>
       </Card>

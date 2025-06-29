@@ -100,7 +100,7 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
     { icon: Home, label: "Dashboard", path: "/dashboard" },
     { icon: MessageCircle, label: "Practice", path: "/practice" },
     { icon: BarChart2, label: "Progress", path: "/progress" },
-    { icon: Settings, label: "Settings", path: "/settings" },
+    { icon: Settings, label: "Account Settings", path: "/settings" },
     { icon: QuestionMarkCircledIcon, label: "Help & Feedback", path: "/feedback-help" },
   ];
 
@@ -109,7 +109,7 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
     { icon: FileText, label: "Lessons", path: "/instructor/lessons" },
     { icon: Users, label: "Students", path: "/instructor/students" },
     { icon: BarChart2, label: "Analytics", path: "/instructor/analytics" },
-    { icon: Settings, label: "Settings", path: "/instructor/settings" },
+    { icon: Settings, label: "Account Settings", path: "/instructor/settings" },
     { icon: QuestionMarkCircledIcon, label: "Help & Feedback", path: "/instructor/feedback-help" },
   ];
 

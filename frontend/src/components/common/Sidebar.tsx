@@ -63,7 +63,7 @@ const UpdatedSidebar = ({ className, currentRole }: SidebarProps) => {
     { icon: Home, label: "Dashboard", path: "/dashboard", id: "home" },
     { icon: MessageCircle, label: "Practice", path: "/practice", id: "practice" },
     { icon: BarChart2, label: "Progress", path: "/progress", id: "progress" },
-    { icon: Settings, label: "Settings", path: "/settings", id: "settings" },
+    { icon: Settings, label: "Account Settings", path: "/settings", id: "settings" },
     { icon: QuestionMarkCircledIcon, label: "Help & Feedback", path: "/feedback-help", id: "feedback-help" },
   ];
 
@@ -72,7 +72,7 @@ const UpdatedSidebar = ({ className, currentRole }: SidebarProps) => {
     { icon: FileText, label: "Lessons", path: "/instructor/lessons", id: "lessons" },
     { icon: Users, label: "Students", path: "/instructor/students", id: "students" },
     { icon: BarChart2, label: "Analytics", path: "/instructor/analytics", id: "analytics" },
-    { icon: Settings, label: "Settings", path: "/instructor/settings", id: "settings" },
+    { icon: Settings, label: "Account Settings", path: "/instructor/settings", id: "settings" },
     { icon: QuestionMarkCircledIcon, label: "Help & Feedback", path: "/instructor/feedback-help", id: "feedback-help" },
   ];
 

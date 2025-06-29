@@ -1,5 +1,6 @@
 // components/student/Dashboard/RecentConversation.tsx
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,8 @@ import {
   Bot, 
   ArrowRight, 
   Clock, 
-  History
+  History,
+  FileText
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -20,10 +22,15 @@ export interface Message {
 
 interface RecentConversationProps {
   messages: Message[];
+  hasRecentConversation?: boolean; // New prop to indicate if there was a recent conversation
 }
 
-const RecentConversation: React.FC<RecentConversationProps> = ({ messages }) => {
+const RecentConversation: React.FC<RecentConversationProps> = ({ 
+  messages, 
+  hasRecentConversation = false 
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const navigate = useNavigate();
   
   // Show only last 4 messages in compact view
   const displayMessages = isExpanded ? messages : messages.slice(-4);
@@ -88,6 +95,33 @@ const RecentConversation: React.FC<RecentConversationProps> = ({ messages }) => 
       </motion.div>
     );
   };
+
+  // Determine the empty state based on whether there was a recent conversation
+  const getEmptyState = () => {
+    if (messages.length === 0 && hasRecentConversation) {
+      // There was a conversation but no dialogue
+      return {
+        icon: <FileText className="h-8 w-8 text-green-500" />,
+        iconBg: "bg-green-100",
+        title: "No Dialogue in Last Conversation",
+        description: "Your most recent practice session was completed without any conversation exchanges.",
+        buttonText: "Start New Conversation",
+        buttonIcon: <MessageSquare className="h-4 w-4 mr-2" />
+      };
+    } else {
+      // No conversations at all
+      return {
+        icon: <MessageSquare className="h-8 w-8 text-green-500" />,
+        iconBg: "bg-green-100",
+        title: "No Conversations Yet",
+        description: "Start a practice case to begin your interactive learning experience.",
+        buttonText: "Start Your First Conversation",
+        buttonIcon: <MessageSquare className="h-4 w-4 mr-2" />
+      };
+    }
+  };
+
+  const emptyState = getEmptyState();
 
   return (
     <motion.div
@@ -165,22 +199,22 @@ const RecentConversation: React.FC<RecentConversationProps> = ({ messages }) => 
               </div>
             </div>
           ) : (
-            /* Empty State */
+            /* Empty State - Now dynamic based on hasRecentConversation */
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <div className="bg-green-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <MessageSquare className="h-8 w-8 text-green-500" />
+                <div className={`${emptyState.iconBg} p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center`}>
+                  {emptyState.icon}
                 </div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">No Conversations Yet</h3>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">{emptyState.title}</h3>
                 <p className="text-gray-500 mb-4 max-w-sm mx-auto text-sm">
-                  Start a practice case to begin your interactive learning experience.
+                  {emptyState.description}
                 </p>
                 <Button 
                   className="bg-green-600 hover:bg-green-700 text-white"
-                  onClick={() => {/* Navigate to practice cases */}}
+                  onClick={() => navigate('/practice')}
                 >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Start Your First Conversation
+                  {emptyState.buttonIcon}
+                  {emptyState.buttonText}
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>

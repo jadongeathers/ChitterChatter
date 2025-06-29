@@ -95,15 +95,15 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
       variants={containerVariants}
     >
       <Card className="shadow-lg border-0 bg-white">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-100 border-b border-blue-200">
+        <CardHeader className="bg-white border-b border-gray-100">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <BookOpen className="h-5 w-5 text-white" />
+            <div className="flex items-center space-x-3">
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <BookOpen className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <CardTitle className="text-blue-800">Your Practice Cases</CardTitle>
-                <p className="text-sm text-blue-600 mt-1">
+                <CardTitle className="text-gray-800">Your Practice Cases</CardTitle>
+                <p className="text-sm text-gray-600 mt-1">
                   Continue your learning journey with these practice exercises
                 </p>
               </div>
@@ -114,7 +114,7 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
                 onClick={handleViewAllCases}
                 variant="ghost"
                 size="sm"
-                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                className="text-gray-600 hover:text-gray-700 hover:bg-gray-50"
               >
                 View All Cases
                 <ArrowRight className="h-4 w-4 ml-1" />
@@ -126,18 +126,18 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
           {practiceCases.length > 0 && (
             <div className="flex items-center space-x-6 mt-4">
               <div className="flex items-center space-x-2">
-                <Target className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-blue-700">
+                <Target className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-600">
                   {completedCases.length} completed
                 </span>
               </div>
               <div className="flex items-center space-x-2">
-                <Play className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-blue-700">
-                  {inProgressCases.length} available
+                <Play className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-600">
+                  {inProgressCases.length} incomplete
                 </span>
               </div>
-              <Badge variant="outline" className="bg-white text-blue-700 border-blue-200">
+              <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
                 {practiceCases.length} total {practiceCases.length === 1 ? 'case' : 'cases'}
               </Badge>
             </div>
@@ -217,7 +217,7 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
               <Button 
                 onClick={handleViewAllCases}
                 variant="outline"
-                className="bg-white hover:bg-blue-50 border-blue-200 text-blue-600"
+                className="bg-white hover:bg-gray-50 border-gray-200 text-gray-600"
               >
                 <BookOpen className="h-4 w-4 mr-2" />
                 View All Practice Cases

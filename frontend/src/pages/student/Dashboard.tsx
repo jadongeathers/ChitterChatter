@@ -25,6 +25,7 @@ const StudentDashboard: React.FC = () => {
   const [practiceCases, setPracticeCases] = useState<PracticeCase[]>([]);
   const [recentTranscript, setRecentTranscript] = useState<Message[]>([]);
   const [recentFeedback, setRecentFeedback] = useState<string | null>(null);
+  const [hasRecentConversation, setHasRecentConversation] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Real student stats from API
@@ -58,6 +59,9 @@ const StudentDashboard: React.FC = () => {
       setPracticeCases(casesData);
       setRecentTranscript(convData.messages || []);
       setRecentFeedback(convData.feedback || null);
+      
+      // Store whether there was a recent conversation (completed or not)
+      setHasRecentConversation(convData.conversation_id ? true : false);
 
       // Calculate student stats from real API data
       const totalTimeInSeconds = progressData.cases?.reduce((sum: number, case_: any) => {
@@ -107,54 +111,10 @@ const StudentDashboard: React.FC = () => {
         title="Dashboard"
         description={getPageDescription()}
       >
-        <div className="flex justify-center items-center h-64">
+        <div className="flex flex-col justify-center items-center h-64 space-y-3">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading your dashboard...</span>
-          {/* Progress Card - Full Width */}
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
-          transition={{ delay: 0.7 }}
-        >
-          <Card className="shadow-lg border border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <TrendingUp className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-lg font-semibold text-indigo-800">Your Progress</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-indigo-900 mb-1">
-                    {getCompletionRate()}%
-                  </div>
-                  <p className="text-sm text-indigo-600">
-                    {studentStats.completedCases} of {studentStats.totalCases} cases completed
-                  </p>
-                </div>
-                
-                <div className="w-full bg-indigo-200 rounded-full h-3">
-                  <div 
-                    className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${getCompletionRate()}%` }}
-                  ></div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 text-center text-sm">
-                  <div>
-                    <div className="font-semibold text-indigo-900">{studentStats.totalConversations}</div>
-                    <div className="text-indigo-600">Conversations</div>
-                  </div>
-                  <div>
-                    <div className="font-semibold text-indigo-900">{studentStats.averageTimePerCase}m</div>
-                    <div className="text-indigo-600">Avg Time</div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+          <span className="text-gray-600 text-center">Loading your dashboard...</span>
+        </div>
       </StudentClassAwareLayout>
     );
   }
@@ -248,7 +208,10 @@ const StudentDashboard: React.FC = () => {
         {/* AI Feedback and Recent Conversation - Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-            <RecentConversation messages={recentTranscript} />
+            <RecentConversation 
+              messages={recentTranscript} 
+              hasRecentConversation={hasRecentConversation}
+            />
           </motion.div>
           
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>

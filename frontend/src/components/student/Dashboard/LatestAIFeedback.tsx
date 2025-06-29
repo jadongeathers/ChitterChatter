@@ -1,5 +1,6 @@
 // components/student/Dashboard/LatestAIFeedback.tsx
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Brain, MessageSquare, ArrowRight } from "lucide-react";
@@ -22,6 +23,8 @@ const LatestAIFeedback: React.FC<LatestAIFeedbackProps> = ({ feedback }) => {
       )
     );
   };
+
+  const navigate = useNavigate();
 
   return (
     <motion.div
@@ -71,7 +74,7 @@ const LatestAIFeedback: React.FC<LatestAIFeedbackProps> = ({ feedback }) => {
                 <Button 
                   variant="outline" 
                   className="w-full bg-white hover:bg-purple-50 border-purple-200 text-purple-700 hover:text-purple-800"
-                  disabled
+                  onClick ={() => navigate('/progress')}
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   View Full Feedback History

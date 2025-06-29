@@ -51,11 +51,31 @@ def get_user_accessible_class_ids(user):
         # Instructor
         return {e.section.class_id for e in user.enrollments if e.role == "instructor"}
 
-def validate_required_fields(data, required_fields):
-    """Validate that all required fields are present in request data."""
-    missing_fields = [field for field in required_fields if not data.get(field)]
+def validate_required_fields_for_publishing(data):
+    """Validate that all required fields are present for publishing."""
+    required_fields = [
+        "title", "description", "target_language", "situation_instructions",
+        "curricular_goals", "behavioral_guidelines", "proficiency_level",
+        "min_time", "max_time", "accessible_on"
+    ]
+    missing_fields = []
+    
+    for field in required_fields:
+        value = data.get(field)
+        if not value or (isinstance(value, str) and not value.strip()):
+            missing_fields.append(field)
+    
+    # Check time validations
+    min_time = data.get('min_time', 0)
+    max_time = data.get('max_time', 0)
+    
+    if min_time < 60:
+        missing_fields.append("min_time (must be at least 60 seconds)")
+    if max_time <= min_time:
+        missing_fields.append("max_time (must be greater than min_time)")
+    
     if missing_fields:
-        return f"Missing required fields: {', '.join(missing_fields)}"
+        return f"Missing or invalid required fields for publishing: {', '.join(missing_fields)}"
     return None
 
 def handle_db_error(operation_name):
@@ -85,13 +105,15 @@ def get_practice_cases():
     
     Query Parameters:
     - class_id (optional): Filter cases for a specific class
+    - include_drafts (optional): Include draft cases (instructors only)
     """
     user = get_current_user()
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Get optional class filter
+    # Get optional filters
     class_id = request.args.get('class_id', type=int)
+    include_drafts = request.args.get('include_drafts', 'false').lower() == 'true'
     
     # Determine which class IDs the user can access
     accessible_class_ids = get_user_accessible_class_ids(user)
@@ -110,8 +132,21 @@ def get_practice_cases():
     # Query practice cases
     practice_cases_query = PracticeCase.query.filter(
         PracticeCase.class_id.in_(class_ids_to_query)
-    ).order_by(PracticeCase.created_at.desc())
+    )
     
+    # Filter by draft status based on user role
+    if user.is_student:
+        # Students only see published cases
+        practice_cases_query = practice_cases_query.filter(
+            PracticeCase.published == True
+        )
+    elif not include_drafts and not user.is_master:
+        # Instructors see published cases by default unless include_drafts is True
+        practice_cases_query = practice_cases_query.filter(
+            PracticeCase.published == True
+        )
+    
+    practice_cases_query = practice_cases_query.order_by(PracticeCase.created_at.desc())
     practice_cases_list = practice_cases_query.all()
 
     # Build response with user-specific data
@@ -119,8 +154,6 @@ def get_practice_cases():
     for case in practice_cases_list:
         # Check visibility for students
         if user.is_student:
-            if not case.published:
-                continue
             accessible = case.accessible_on is None or case.accessible_on <= datetime.now(timezone.utc)
         else:
             # Instructors and masters can see all cases
@@ -158,6 +191,10 @@ def get_practice_case(case_id):
     if not can_user_access_class(user, case.class_id):
         return jsonify({"error": "Unauthorized to access this practice case"}), 403
 
+    # Students can only access published cases
+    if user.is_student and not case.published:
+        return jsonify({"error": "Practice case not available"}), 403
+
     return jsonify(case.to_dict()), 200
 
 
@@ -167,9 +204,10 @@ def get_practice_case(case_id):
 def add_practice_case():
     """
     Add a new practice case for a specific class.
+    Can be created as a draft or published directly.
     
-    Required fields: title, description, system_prompt, class_id
-    Optional fields: min_time, max_time, accessible_on, feedback_prompt, voice, language_code
+    Required fields for draft: class_id
+    Required fields for publishing: all validation fields
     """
     user = get_current_user()
     if not user:
@@ -177,12 +215,9 @@ def add_practice_case():
 
     data = request.get_json() or {}
     
-    # Validate required fields
-    validation_error = validate_required_fields(
-        data, ["title", "description", "system_prompt", "class_id"]
-    )
-    if validation_error:
-        return jsonify({"error": validation_error}), 400
+    # Validate class_id is always required
+    if not data.get("class_id"):
+        return jsonify({"error": "class_id is required"}), 400
 
     class_id = data["class_id"]
     
@@ -191,6 +226,16 @@ def add_practice_case():
         instructor_class_ids = {e.section.class_id for e in user.enrollments if e.role == "instructor"}
         if class_id not in instructor_class_ids:
             return jsonify({"error": "Unauthorized to create cases for this class"}), 403
+
+    # Check if this is being published directly
+    is_draft = data.get('is_draft', True)
+    published = data.get('published', False)
+    
+    # If trying to publish, validate all required fields
+    if published or not is_draft:
+        validation_error = validate_required_fields_for_publishing(data)
+        if validation_error:
+            return jsonify({"error": validation_error}), 400
 
     # Parse accessible_on date if provided
     accessible_on = None
@@ -203,23 +248,39 @@ def add_practice_case():
     # Create new practice case
     new_case = PracticeCase(
         class_id=class_id,
-        title=data["title"],
-        description=data["description"],
-        system_prompt=data["system_prompt"],
+        title=data.get("title", ""),
+        description=data.get("description", ""),
         min_time=int(data.get('min_time', 0)),
         max_time=int(data.get('max_time', 0)),
         accessible_on=accessible_on,
-        published=bool(data.get('published', False)),
-        feedback_prompt=data.get("feedback_prompt", ""),
         voice=data.get("voice", "verse"),
         language_code=data.get("language_code", "en"),
+        
+        # New individual fields
+        target_language=data.get("target_language", ""),
+        situation_instructions=data.get("situation_instructions", ""),
+        curricular_goals=data.get("curricular_goals", ""),
+        key_items=data.get("key_items", ""),
+        behavioral_guidelines=data.get("behavioral_guidelines", ""),
+        proficiency_level=data.get("proficiency_level", ""),
+        instructor_notes=data.get("instructor_notes", ""),
+        feedback_prompt=data.get("feedback_prompt", ""),
+        
+        # Draft and publish status
+        is_draft=is_draft,
+        published=published,
         created_by=user.id
     )
+
+    # Generate system prompt if publishing
+    if published and not is_draft:
+        new_case.update_system_prompt()
 
     db.session.add(new_case)
     db.session.commit()
     
-    current_app.logger.info(f"Practice case '{new_case.title}' created by user {user.id} for class {class_id}")
+    status = "published" if published else "draft"
+    current_app.logger.info(f"Practice case '{new_case.title}' created as {status} by user {user.id} for class {class_id}")
     return jsonify(new_case.to_dict()), 201
 
 
@@ -242,25 +303,26 @@ def update_practice_case(case_id):
 
     data = request.get_json() or {}
 
-    # Update fields if provided
-    if "title" in data:
-        case.title = data["title"]
-    if "description" in data:
-        case.description = data["description"]
-    if "system_prompt" in data:
-        case.system_prompt = data["system_prompt"]
-    if "min_time" in data:
-        case.min_time = int(data["min_time"])
-    if "max_time" in data:
-        case.max_time = int(data["max_time"])
+    # Update basic fields if provided
+    updateable_fields = [
+        "title", "description", "min_time", "max_time", "voice", "language_code",
+        "target_language", "situation_instructions", "curricular_goals", 
+        "key_items", "behavioral_guidelines", "proficiency_level", "instructor_notes", "feedback_prompt"
+    ]
+    
+    for field in updateable_fields:
+        if field in data:
+            if field in ["min_time", "max_time"]:
+                setattr(case, field, int(data[field]))
+            else:
+                setattr(case, field, data[field])
+
+    # Handle draft and published status
+    if "is_draft" in data:
+        case.is_draft = bool(data["is_draft"])
+    
     if "published" in data:
         case.published = bool(data["published"])
-    if "feedback_prompt" in data:
-        case.feedback_prompt = data["feedback_prompt"]
-    if "voice" in data:
-        case.voice = data["voice"]
-    if "language_code" in data:
-        case.language_code = data["language_code"]
     
     # Handle accessible_on date
     if "accessible_on" in data:
@@ -272,6 +334,29 @@ def update_practice_case(case_id):
         else:
             case.accessible_on = None
 
+    # If trying to publish, validate required fields
+    if case.published and not case.is_draft:
+        # Create a dict with current case data for validation
+        case_data = {
+            "title": case.title,
+            "description": case.description,
+            "target_language": case.target_language,
+            "situation_instructions": case.situation_instructions,
+            "curricular_goals": case.curricular_goals,
+            "behavioral_guidelines": case.behavioral_guidelines,
+            "proficiency_level": case.proficiency_level,
+            "min_time": case.min_time,
+            "max_time": case.max_time,
+            "accessible_on": case.accessible_on.isoformat() if case.accessible_on else None
+        }
+        
+        validation_error = validate_required_fields_for_publishing(case_data)
+        if validation_error:
+            return jsonify({"error": validation_error}), 400
+        
+        # Generate system prompt for published cases
+        case.update_system_prompt()
+
     # Update the updated_at timestamp
     case.updated_at = datetime.now(timezone.utc)
 
@@ -281,11 +366,67 @@ def update_practice_case(case_id):
     return jsonify({"message": "Practice case updated successfully", "case": case.to_dict()}), 200
 
 
+@practice_cases.route('/publish_case/<int:case_id>', methods=['PUT'])
+@jwt_required()
+@handle_db_error("publish practice case")
+def publish_practice_case(case_id):
+    """Publish a practice case after validation."""
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    case = PracticeCase.query.get(case_id)
+    if not case:
+        return jsonify({"error": "Practice case not found"}), 404
+
+    # Check authorization
+    if not can_user_modify_case(user, case):
+        return jsonify({"error": "Unauthorized to modify this practice case"}), 403
+
+    data = request.get_json() or {}
+
+    # Update fields first if provided
+    updateable_fields = [
+        "title", "description", "min_time", "max_time", "accessible_on", 
+        "voice", "language_code", "target_language", "situation_instructions",
+        "curricular_goals", "key_items", "behavioral_guidelines", 
+        "proficiency_level", "instructor_notes"
+    ]
+    
+    for field in updateable_fields:
+        if field in data:
+            if field == "accessible_on" and data[field]:
+                try:
+                    setattr(case, field, datetime.fromisoformat(data[field].replace('Z', '+00:00')))
+                except ValueError:
+                    return jsonify({"error": "Invalid accessible_on date format. Use ISO format."}), 400
+            elif field in ["min_time", "max_time"]:
+                setattr(case, field, int(data[field]))
+            else:
+                setattr(case, field, data[field])
+
+    # Validate before publishing using the model's method
+    can_publish, errors = case.can_be_published()
+    if not can_publish:
+        return jsonify({"error": f"Cannot publish: {', '.join(errors)}"}), 400
+
+    # Publish the case using the model's method
+    try:
+        case.publish()
+        case.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        
+        current_app.logger.info(f"Practice case {case_id} published by user {user.id}")
+        return jsonify({"message": "Practice case published successfully", "case": case.to_dict()}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
 @practice_cases.route('/publish/<int:case_id>', methods=['PUT'])
 @jwt_required()
 @handle_db_error("update publish status")
-def publish_practice_case(case_id):
-    """Toggle the published status of a practice case."""
+def toggle_publish_practice_case(case_id):
+    """Toggle the published status of a practice case (legacy endpoint)."""
     user = get_current_user()
     if not user:
         return jsonify({"error": "User not found"}), 404
@@ -304,9 +445,20 @@ def publish_practice_case(case_id):
     if published is None:
         return jsonify({"error": "Published status not provided"}), 400
 
-    case.published = bool(published)
+    if published:
+        # Validate before publishing
+        can_publish, errors = case.can_be_published()
+        if not can_publish:
+            return jsonify({"error": f"Cannot publish: {', '.join(errors)}"}), 400
+        
+        # Publish using the model's method
+        case.publish()
+    else:
+        # Unpublish
+        case.published = False
+        case.is_draft = True
+
     case.updated_at = datetime.now(timezone.utc)
-    
     db.session.commit()
     
     status = "published" if published else "unpublished"
@@ -386,7 +538,9 @@ def get_case_analytics(case_id):
         "completed_conversations": completed_conversations,
         "completion_rate": (completed_conversations / total_conversations * 100) if total_conversations > 0 else 0,
         "unique_users": unique_users,
-        "average_duration": avg_duration
+        "average_duration": avg_duration,
+        "is_draft": case.is_draft,
+        "published": case.published
     }
 
     return jsonify(analytics_data), 200

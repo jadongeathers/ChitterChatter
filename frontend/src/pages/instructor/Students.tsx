@@ -32,6 +32,7 @@ interface Student {
   email?: string;
   sessionsCompleted: number;
   lastActive: string;
+  lastLoginTimestamp?: string;
 }
 
 const Students: React.FC = () => {
@@ -100,8 +101,8 @@ const Students: React.FC = () => {
           return lastA.localeCompare(lastB) || firstA.localeCompare(firstB);
         case "sessions":
           return b.sessionsCompleted - a.sessionsCompleted;
-        case "recent":
-          return new Date(b.lastActive).getTime() - new Date(a.lastActive).getTime();
+          case "recent":
+            return new Date(b.lastLoginTimestamp || 0).getTime() - new Date(a.lastLoginTimestamp || 0).getTime();
         default:
           return 0;
       }
@@ -211,6 +212,44 @@ const Students: React.FC = () => {
     }
   };
 
+  const exportToCSV = () => {
+    // Prepare CSV data
+    const headers = ['Name', 'Email', 'Sessions Completed', 'Last Active'];
+    const csvData = [
+      headers,
+      ...filteredStudents.map(student => [
+        student.name,
+        student.email || '',
+        student.sessionsCompleted.toString(),
+        student.lastActive
+      ])
+    ];
+  
+    // Convert to CSV string
+    const csvContent = csvData
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+  
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      
+      // Generate filename with class name and date
+      const className = selectedClass ? `${selectedClass.course_code}_` : '';
+      const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      link.setAttribute('download', `${className}students_${date}.csv`);
+      
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   // Helper functions
   const getPageDescription = () => {
     if (selectedClass) {
@@ -232,13 +271,6 @@ const Students: React.FC = () => {
   const getEngagementRate = () => {
     if (students.length === 0) return 0;
     return Math.round((getActiveStudents() / students.length) * 100);
-  };
-
-  const getEngagementColor = () => {
-    const rate = getEngagementRate();
-    if (rate >= 80) return "text-green-600 bg-green-50 border-green-200";
-    if (rate >= 60) return "text-yellow-600 bg-yellow-50 border-yellow-200";
-    return "text-red-600 bg-red-50 border-red-200";
   };
 
   const getStudentCountText = () => {
@@ -286,8 +318,8 @@ const Students: React.FC = () => {
                   <Users className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-blue-900">{students.length}</div>
-                  <div className="text-sm text-blue-700">Total Students</div>
+                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-900">{students.length}</div>
+                <div className="text-xs sm:text-sm text-blue-700">Total Students</div>
                 </div>
               </div>
             </CardContent>
@@ -300,24 +332,24 @@ const Students: React.FC = () => {
                   <Activity className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-green-900">{getActiveStudents()}</div>
-                  <div className="text-sm text-green-700">Active Students</div>
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-900">{getActiveStudents()}</div>
+                  <div className="text-xs sm:text-sm text-green-700">Active Students</div>
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <Card className={`bg-gradient-to-br ${getEngagementRate() >= 80 ? 'from-emerald-50 to-emerald-100 border-emerald-200' : getEngagementRate() >= 60 ? 'from-yellow-50 to-yellow-100 border-yellow-200' : 'from-red-50 to-red-100 border-red-200'}`}>
+          
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-lg ${getEngagementRate() >= 80 ? 'bg-emerald-600' : getEngagementRate() >= 60 ? 'bg-yellow-600' : 'bg-red-600'}`}>
+                <div className="bg-orange-600 p-2 rounded-lg">
                   <TrendingUp className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className={`text-2xl font-bold ${getEngagementRate() >= 80 ? 'text-emerald-900' : getEngagementRate() >= 60 ? 'text-yellow-900' : 'text-red-900'}`}>
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-900">
                     {getEngagementRate()}%
                   </div>
-                  <div className={`text-sm ${getEngagementRate() >= 80 ? 'text-emerald-700' : getEngagementRate() >= 60 ? 'text-yellow-700' : 'text-red-700'}`}>
+                  <div className="text-xs sm:text-sm text-orange-700">
                     Engagement Rate
                   </div>
                 </div>
@@ -332,8 +364,8 @@ const Students: React.FC = () => {
                   <Calendar className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-purple-900">{getAverageSessionsPerStudent()}</div>
-                  <div className="text-sm text-purple-700">Avg Sessions</div>
+                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-900">{getAverageSessionsPerStudent()}</div>
+                  <div className="text-xs sm:text-sm text-purple-700">Avg Sessions</div>
                 </div>
               </div>
             </CardContent>
@@ -384,10 +416,14 @@ const Students: React.FC = () => {
 
             {/* Action Buttons */}
             <div className="flex gap-3 w-full sm:w-auto">
-              <Button variant="outline" className="flex items-center gap-2 w-full sm:w-auto">
-                <Download size={16} />
-                <span className="hidden sm:inline">Export</span>
-              </Button>
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2 w-full sm:w-auto"
+              onClick={exportToCSV}
+            >
+              <Download size={16} />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
               
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>

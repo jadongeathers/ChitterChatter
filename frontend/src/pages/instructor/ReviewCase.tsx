@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchWithAuth } from "@/utils/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,6 +15,8 @@ import {
   X, 
   Trash2,
   ArrowLeft,
+  ChevronRight,
+  ChevronLeft,
   Check,
   AlertCircle,
   BookOpen,
@@ -29,9 +31,12 @@ import {
   Settings,
   Lightbulb,
   Eye,
-  Edit
+  Edit,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 import ClassAwareLayout from "@/components/instructor/ClassAwareLayout";
+import FeedbackConfiguration from "@/components/instructor/FeedbackConfiguration";
 import { useClass } from "@/contexts/ClassContext";
 
 interface PracticeCase {
@@ -42,11 +47,19 @@ interface PracticeCase {
   min_time: number;
   max_time: number;
   accessible_on: string;
-  system_prompt: string;
   voice: string;
   language_code: string;
   published: boolean;
+  is_draft: boolean;
+  target_language: string;
+  situation_instructions: string;
+  curricular_goals: string;
+  key_items: string;
+  behavioral_guidelines: string;
+  proficiency_level: string;
+  instructor_notes: string;
   created_at?: string;
+  feedback_prompt?: string;
 }
 
 // Language mapping for OpenAI transcription
@@ -84,22 +97,13 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
   
   // State management
   const [practiceCase, setPracticeCase] = useState<PracticeCase | null>(null);
+  const [feedbackPrompt, setFeedbackPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [activeTab, setActiveTab] = useState("basics");
-
-  // Form fields
-  const [language, setLanguage] = useState("");
-  const [languageCode, setLanguageCode] = useState("en");
-  const [situationInstructions, setSituationInstructions] = useState("");
-  const [curricularGoals, setCurricularGoals] = useState("");
-  const [keyItems, setKeyItems] = useState("");
-  const [behavioralGuidelines, setBehavioralGuidelines] = useState("");
-  const [proficiencyLevel, setProficiencyLevel] = useState("");
-  const [instructorNotes, setInstructorNotes] = useState("");
-  const [voice, setVoice] = useState("verse");
 
   // Get class_id from URL params or selected class
   const getClassId = () => {
@@ -108,6 +112,19 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     if (urlClassId) return parseInt(urlClassId);
     return selectedClass?.class_id || null;
   };
+
+  // Initialize feedback prompt when practice case loads
+  useEffect(() => {
+    if (practiceCase?.feedback_prompt) {
+      setFeedbackPrompt(practiceCase.feedback_prompt);
+    }
+  }, [practiceCase?.feedback_prompt]);
+
+  const handleFeedbackChange = (newFeedbackPrompt: string) => {
+    setFeedbackPrompt(newFeedbackPrompt);
+    setHasUnsavedChanges(true);
+  };
+
 
   // Initialize data
   useEffect(() => {
@@ -131,10 +148,17 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         min_time: 0,
         max_time: 0,
         accessible_on: "",
-        system_prompt: "",
         voice: "verse",
         language_code: "en",
         published: false,
+        is_draft: true,
+        target_language: "",
+        situation_instructions: "",
+        curricular_goals: "",
+        key_items: "",
+        behavioral_guidelines: "",
+        proficiency_level: "",
+        instructor_notes: "",
         created_at: new Date().toISOString()
       });
       setIsLoading(false);
@@ -149,15 +173,6 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         
         const data = await response.json();
         setPracticeCase(data);
-        parseSystemPrompt(data.system_prompt);
-        
-        if (data.voice) {
-          setVoice(data.voice);
-        }
-        
-        if (data.language_code) {
-          setLanguageCode(data.language_code);
-        }
       } catch (err: unknown) {
         console.error("Error loading practice case:", err);
         setStatusMessage({
@@ -173,35 +188,44 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     fetchPracticeCase();
   }, [caseId, isNew, selectedClass, navigate]);
 
-  // Update language code when language changes
-  useEffect(() => {
-    if (language && languageCodeMap[language]) {
-      setLanguageCode(languageCodeMap[language]);
-    }
-  }, [language]);
-
-  const parseSystemPrompt = (prompt: string) => {
-    const languageRegex = /practice their (.*?) skills/;
-    const situationRegex = /1\. \*\*Situation Instructions\*\*:\s*([\s\S]*?)\n\s*2\. \*\*Curricular Goals\*\*:/;
-    const goalsRegex = /2\. \*\*Curricular Goals\*\*:\s*Your responses should align with the following curricular goals:\s*([\s\S]*?)\n\s*3\. \*\*Key Items to Use\*\*:/;
-    const keyItemsRegex = /3\. \*\*Key Items to Use\*\*:\s*Incorporate the following key items into your responses:\s*([\s\S]*?)\n\s*4\. \*\*Behavioral Guidelines\*\*:/;
-    const behaviorRegex = /4\. \*\*Behavioral Guidelines\*\*:\s*Respond in a manner consistent with the following behavioral guidelines:\s*([\s\S]*?)\s*Using the guidance above, adjust your speech, vocabulary, and pacing according to the student's proficiency level:/;
-    const proficiencyRegex = /Using the guidance above, adjust your speech, vocabulary, and pacing according to the student's proficiency level:\s*([\s\S]*?)\n\s*5\. \*\*Instructor Notes\*\*:/;
-    const instructorNotesRegex = /5\. \*\*Instructor Notes\*\*:\s*([\s\S]*)$/;
-
-    const extractedLanguage = (prompt.match(languageRegex)?.[1] || "").trim();
-    setLanguage(extractedLanguage);
-    setSituationInstructions((prompt.match(situationRegex)?.[1] || "").trim());
-    setCurricularGoals((prompt.match(goalsRegex)?.[1] || "").trim());
-    setKeyItems((prompt.match(keyItemsRegex)?.[1] || "").trim());
-    setBehavioralGuidelines((prompt.match(behaviorRegex)?.[1] || "").trim());
-    setProficiencyLevel((prompt.match(proficiencyRegex)?.[1] || "").trim());
-    setInstructorNotes((prompt.match(instructorNotesRegex)?.[1] || "").trim());
+  // Auto-save functionality
+  const autoSaveDraft = useCallback(async () => {
+    if (!practiceCase || !hasUnsavedChanges || isNew || !practiceCase.id) return;
     
-    if (extractedLanguage && languageCodeMap[extractedLanguage]) {
-      setLanguageCode(languageCodeMap[extractedLanguage]);
+    setIsAutoSaving(true);
+    try {
+      const response = await fetchWithAuth(`/api/practice_cases/update_case/${practiceCase.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...practiceCase,
+          feedback_prompt: feedbackPrompt,
+          is_draft: true
+        }),
+      });
+
+      if (response.ok) {
+        setHasUnsavedChanges(false);
+      }
+    } catch (error) {
+      console.error("Auto-save failed:", error);
+    } finally {
+      setIsAutoSaving(false);
     }
-  };
+  }, [practiceCase, hasUnsavedChanges, isNew]);
+
+  // Auto-save timer
+  useEffect(() => {
+    if (hasUnsavedChanges && !isNew && practiceCase?.id) {
+      const autoSaveTimer = setTimeout(() => {
+        autoSaveDraft();
+      }, 3000); // Auto-save after 3 seconds of inactivity
+      
+      return () => clearTimeout(autoSaveTimer);
+    }
+  }, [hasUnsavedChanges, autoSaveDraft, isNew, practiceCase?.id]);
 
   // Clear status message after delay
   useEffect(() => {
@@ -210,32 +234,15 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       return () => clearTimeout(timer);
     }
   }, [statusMessage]);
+
   const handleFieldChange = (field: string, value: any) => {
     setHasUnsavedChanges(true);
     
-    if (field === 'title' || field === 'description' || field === 'min_time' || field === 'max_time' || field === 'published' || field === 'accessible_on') {
-      setPracticeCase(prev => prev ? { ...prev, [field]: value } : null);
-    } else if (field === 'language') {
-      setLanguage(value);
-      if (languageCodeMap[value]) {
-        setLanguageCode(languageCodeMap[value]);
-      }
-    } else if (field === 'voice') {
-      setVoice(value);
-    } else {
-      // Handle text fields
-      const setters: Record<string, React.Dispatch<React.SetStateAction<string>>> = {
-        situationInstructions: setSituationInstructions,
-        curricularGoals: setCurricularGoals,
-        keyItems: setKeyItems,
-        behavioralGuidelines: setBehavioralGuidelines,
-        proficiencyLevel: setProficiencyLevel,
-        instructorNotes: setInstructorNotes,
-      };
-      
-      if (setters[field]) {
-        setters[field](value);
-      }
+    setPracticeCase(prev => prev ? { ...prev, [field]: value } : null);
+    
+    // Update language_code when target_language changes
+    if (field === 'target_language' && languageCodeMap[value]) {
+      setPracticeCase(prev => prev ? { ...prev, language_code: languageCodeMap[value] } : null);
     }
   };
 
@@ -252,17 +259,17 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
-  // Validate form
-  const validateForm = () => {
+  // Validate form for publishing
+  const validateForPublishing = () => {
     const errors = [];
     
     if (!practiceCase?.title?.trim()) errors.push("Title is required");
     if (!practiceCase?.description?.trim()) errors.push("Description is required");
-    if (!language) errors.push("Target language is required");
-    if (!situationInstructions.trim()) errors.push("Situation instructions are required");
-    if (!curricularGoals.trim()) errors.push("Curricular goals are required");
-    if (!behavioralGuidelines.trim()) errors.push("Behavioral guidelines are required");
-    if (!proficiencyLevel.trim()) errors.push("Proficiency level is required");
+    if (!practiceCase?.target_language?.trim()) errors.push("Target language is required");
+    if (!practiceCase?.situation_instructions?.trim()) errors.push("Situation instructions are required");
+    if (!practiceCase?.curricular_goals?.trim()) errors.push("Curricular goals are required");
+    if (!practiceCase?.behavioral_guidelines?.trim()) errors.push("Behavioral guidelines are required");
+    if (!practiceCase?.proficiency_level?.trim()) errors.push("Proficiency level is required");
     if (!practiceCase?.min_time || practiceCase.min_time < 60) errors.push("Minimum time must be at least 1 minute");
     if (!practiceCase?.max_time || practiceCase.max_time < practiceCase.min_time) errors.push("Maximum time must be greater than minimum time");
     if (!practiceCase?.accessible_on) errors.push("Access date and time are required");
@@ -270,66 +277,53 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     return errors;
   };
 
-  const handleSave = async () => {
-    if (
-      !practiceCase?.title ||
-      !practiceCase?.description ||
-      !language ||
-      !situationInstructions ||
-      !curricularGoals ||
-      !behavioralGuidelines ||
-      !proficiencyLevel ||
-      practiceCase?.min_time == null ||
-      practiceCase?.max_time == null ||  
-      !practiceCase?.accessible_on
-    ) {
-      setStatusMessage({
-        type: 'error',
-        message: "Please fill in all required fields."
+  const canPublish = () => {
+    return validateForPublishing().length === 0;
+  };
+
+  const playVoicePreview = async (voiceId: string) => {
+    try {
+      // Sample text to demonstrate the voice
+      const sampleText = "Hello! I'm here to help you practice your conversation skills. Let's have a great learning session together.";
+      
+      // Use OpenAI's text-to-speech API
+      const response = await fetchWithAuth('/api/chatbot/voice/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          voice: voiceId,
+          text: sampleText,
+        }),
       });
-      return;
+  
+      if (!response.ok) {
+        throw new Error('Failed to generate voice preview');
+      }
+  
+      // Get the audio blob and play it
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      audio.play();
+      
+      // Clean up the URL after playing
+      audio.addEventListener('ended', () => {
+        URL.revokeObjectURL(audioUrl);
+      });
+      
+    } catch (error) {
+      console.error('Error playing voice preview:', error);
+      // You could show a toast notification here
     }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!practiceCase) return;
 
     setIsSaving(true);
-
-    const updatedPrompt = `
-Your goal is to make an environment for students to practice their ${language} skills. You are a real human with the exact background, personality, and characteristics described below.
-
-You must NEVER break character. Respond exactly as the real person you're portraying would in this situation.
-
-Allow the student to lead the conversation. Your role is to respond naturally, not to guide or direct the interaction.
-
-Your responses should be concise and conversational. Avoid long, detailed explanations unless specifically asked.
-
-Your first response should never ask the student how you can help or what they need assistance with. You are a real person in a specific situation. You should always respond as your character would in a real-life version of this scenario.
-
-If the student has a beginner proficiency level, use simpler vocabulary and speak more slowly, but remain in character (e.g., speak patiently and clearly if that fits your character). 
-If the student has an intermediate proficiency level, use moderate complexity in your speech while remaining in character.
-If the student has an advanced proficiency level, speak naturally as your character would.
-
-When the conversation begins, immediately assume your character role. 
-
-1. **Situation Instructions**:
-${situationInstructions}
-
-2. **Curricular Goals**:
-Your responses should align with the following curricular goals:
-${curricularGoals}
-
-3. **Key Items to Use**:
-Incorporate the following key items into your responses:
-${keyItems}
-
-4. **Behavioral Guidelines**:
-Respond in a manner consistent with the following behavioral guidelines:
-${behavioralGuidelines}
-
-Using the guidance above, adjust your speech, vocabulary, and pacing according to the student's proficiency level:
-${proficiencyLevel}
-
-5. **Instructor Notes**:
-${instructorNotes}
-    `.trim();
 
     try {
       const endpoint = isNew
@@ -339,19 +333,15 @@ ${instructorNotes}
       const method = isNew ? "POST" : "PUT";
 
       const payload: any = {
-        title: practiceCase.title,
-        description: practiceCase.description,
-        system_prompt: updatedPrompt,
-        min_time: Math.floor(practiceCase.min_time),
-        max_time: Math.floor(practiceCase.max_time),
-        accessible_on: practiceCase.accessible_on,
-        voice: voice,
-        language_code: languageCode,
-        published: practiceCase.published || false
+        ...practiceCase,
+        feedback_prompt: feedbackPrompt,
+        is_draft: true,
+        published: false
       };
 
-      if (isNew) {
-        payload.class_id = practiceCase.class_id;
+      // For new cases, class_id is required
+      if (isNew && !payload.class_id) {
+        throw new Error("Class ID is required");
       }
 
       const response = await fetchWithAuth(endpoint, {
@@ -364,25 +354,96 @@ ${instructorNotes}
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to save practice case");
+        throw new Error(errorData.error || "Failed to save draft");
       }
 
       setStatusMessage({
         type: 'success',
-        message: isNew ? "Practice case created successfully!" : "Changes saved successfully!"
+        message: "Draft saved successfully!"
+      });
+      setHasUnsavedChanges(false);
+
+      if (isNew) {
+        const data = await response.json();
+        // Update the URL and state to reflect this is no longer a new case
+        window.history.replaceState({}, '', `/instructor/feedback/${data.id}?tab=edit`);
+        setPracticeCase(prev => prev ? { ...prev, id: data.id } : null);
+        // Don't navigate away, just update the state
+      }
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      setStatusMessage({
+        type: 'error',
+        message: `Failed to save draft: ${error instanceof Error ? error.message : "Unknown error occurred"}`
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!practiceCase) return;
+
+    const validationErrors = validateForPublishing();
+    if (validationErrors.length > 0) {
+      setStatusMessage({
+        type: 'error',
+        message: `Cannot publish: ${validationErrors.join(', ')}`
+      });
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      let endpoint, method;
+      
+      if (isNew) {
+        endpoint = "/api/practice_cases/add_case";
+        method = "POST";
+      } else {
+        endpoint = `/api/practice_cases/publish_case/${caseId}`;
+        method = "PUT";
+      }
+
+      const payload: any = {
+        ...practiceCase,
+        feedbackPrompt: feedbackPrompt,
+        is_draft: false,
+        published: true
+      };
+
+      const response = await fetchWithAuth(endpoint, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to publish practice case");
+      }
+
+      setStatusMessage({
+        type: 'success',
+        message: "Practice case published successfully!"
       });
       setHasUnsavedChanges(false);
 
       if (isNew) {
         const data = await response.json();
         navigate(`/instructor/feedback/${data.id}`);
+      } else {
+        // Update local state to reflect published status
+        setPracticeCase(prev => prev ? { ...prev, published: true, is_draft: false } : null);
       }
-      // For existing cases, just show success message without redirecting
     } catch (error) {
-      console.error("Error saving practice case:", error);
+      console.error("Error publishing practice case:", error);
       setStatusMessage({
         type: 'error',
-        message: `Failed to save practice case: ${error instanceof Error ? error.message : "Unknown error occurred"}`
+        message: `Failed to publish practice case: ${error instanceof Error ? error.message : "Unknown error occurred"}`
       });
     } finally {
       setIsSaving(false);
@@ -437,11 +498,11 @@ ${instructorNotes}
     const fields = [
       practiceCase?.title,
       practiceCase?.description,
-      language,
-      situationInstructions,
-      curricularGoals,
-      behavioralGuidelines,
-      proficiencyLevel,
+      practiceCase?.target_language,
+      practiceCase?.situation_instructions,
+      practiceCase?.curricular_goals,
+      practiceCase?.behavioral_guidelines,
+      practiceCase?.proficiency_level,
       practiceCase?.accessible_on,
       practiceCase?.min_time,
       practiceCase?.max_time
@@ -473,9 +534,9 @@ ${instructorNotes}
       {/* Back Navigation */}
       <div className="mb-6">
         <Button 
-          variant="ghost" 
           onClick={() => navigate('/instructor/lessons')}
-          className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+          variant="outline"
+          className="flex items-center space-x-2 bg-white border-gray-300 hover:bg-gray-50"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back to Lessons</span>
@@ -531,11 +592,28 @@ ${instructorNotes}
                 </CardDescription>
               </div>
             </div>
-            {hasUnsavedChanges && (
-              <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
-                Unsaved Changes
-              </Badge>
-            )}
+            <div className="flex items-center space-x-2">
+              {isAutoSaving && (
+                <Badge variant="outline" className="text-blue-600 border-blue-300 bg-blue-50">
+                  Auto-saving...
+                </Badge>
+              )}
+              {hasUnsavedChanges && !isAutoSaving && (
+                <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
+                  Unsaved Changes
+                </Badge>
+              )}
+              {practiceCase?.is_draft && (
+                <Badge variant="outline" className="text-gray-600 border-gray-300 bg-gray-50">
+                  Draft
+                </Badge>
+              )}
+              {practiceCase?.published && (
+                <Badge variant="default" className="text-green-600 border-green-300 bg-green-50">
+                  Published
+                </Badge>
+              )}
+            </div>
           </div>
           <div className="w-full bg-blue-200 rounded-full h-2 mt-4">
             <div 
@@ -550,7 +628,7 @@ ${instructorNotes}
         {/* Main Content */}
         <div className="xl:col-span-3">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid grid-cols-3 w-full bg-white border">
+            <TabsList className="grid grid-cols-4 w-full bg-white border">
               <TabsTrigger value="basics" className="flex items-center space-x-2">
                 <Settings className="h-4 w-4" />
                 <span className="hidden sm:inline">Basic Info</span>
@@ -565,6 +643,11 @@ ${instructorNotes}
                 <Target className="h-4 w-4" />
                 <span className="hidden sm:inline">Scenario Setup</span>
                 <span className="sm:hidden">Scenario</span>
+              </TabsTrigger>
+              <TabsTrigger value="feedback" className="flex items-center space-x-2">
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">AI Feedback</span>
+                <span className="sm:hidden">Feedback</span>
               </TabsTrigger>
             </TabsList>
 
@@ -595,7 +678,7 @@ ${instructorNotes}
                         className="text-base"
                       />
                       <p className="text-sm text-gray-600">
-                        Choose a clear, descriptive title that tells students what they'll practice
+                        Choose a clear, descriptive title for your practice case
                       </p>
                     </div>
 
@@ -634,23 +717,21 @@ ${instructorNotes}
                         <Label htmlFor="min-time" className="text-base font-medium">
                           Minimum Duration (minutes) *
                         </Label>
-                        <Select 
-                          value={practiceCase ? Math.floor(practiceCase.min_time / 60).toString() : "0"} 
-                          onValueChange={(value) => handleFieldChange('min_time', Number(value) * 60)}
-                        >
-                          <SelectTrigger className="text-base">
-                            <SelectValue placeholder="Select minimum time" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30].map((minutes) => (
-                              <SelectItem key={minutes} value={minutes.toString()}>
-                                {minutes} minute{minutes !== 1 ? 's' : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Input
+                          id="min-time"
+                          type="number"
+                          min="0"
+                          max="30"
+                          value={practiceCase ? Math.floor(practiceCase.min_time / 60) : 0}
+                          onChange={(e) => {
+                            const minutes = Math.max(0, Math.min(30, Number(e.target.value) || 0));
+                            handleFieldChange('min_time', minutes * 60);
+                          }}
+                          placeholder="Enter minutes (0-30)"
+                          className="text-base"
+                        />
                         <p className="text-sm text-gray-600">
-                          Minimum time students must practice before they can finish
+                          Minimum time students must practice before they can finish (0-30 minutes)
                         </p>
                       </div>
 
@@ -658,23 +739,21 @@ ${instructorNotes}
                         <Label htmlFor="max-time" className="text-base font-medium">
                           Maximum Duration (minutes) *
                         </Label>
-                        <Select 
-                          value={practiceCase ? Math.floor(practiceCase.max_time / 60).toString() : "0"} 
-                          onValueChange={(value) => handleFieldChange('max_time', Number(value) * 60)}
-                        >
-                          <SelectTrigger className="text-base">
-                            <SelectValue placeholder="Select maximum time" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[5, 10, 15, 20, 25, 30].map((minutes) => (
-                              <SelectItem key={minutes} value={minutes.toString()}>
-                                {minutes} minute{minutes !== 1 ? 's' : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Input
+                          id="max-time"
+                          type="number"
+                          min="0"
+                          max="30"
+                          value={practiceCase ? Math.floor(practiceCase.max_time / 60) : 0}
+                          onChange={(e) => {
+                            const minutes = Math.max(0, Math.min(30, Number(e.target.value) || 0));
+                            handleFieldChange('max_time', minutes * 60);
+                          }}
+                          placeholder="Enter minutes (0-30)"
+                          className="text-base"
+                        />
                         <p className="text-sm text-gray-600">
-                          Maximum time before the session automatically ends
+                          Maximum time before the session automatically ends (0-30 minutes)
                         </p>
                       </div>
                     </div>
@@ -713,16 +792,16 @@ ${instructorNotes}
                       <Label htmlFor="language" className="text-base font-medium">
                         Target Language *
                       </Label>
-                      <Select value={language} onValueChange={(value) => handleFieldChange('language', value)}>
+                      <Select value={practiceCase?.target_language || ""} onValueChange={(value) => handleFieldChange('target_language', value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select target language" />
                         </SelectTrigger>
                         <SelectContent>
                           {Object.keys(languageCodeMap).map((lang) => (
                             <SelectItem key={lang} value={lang}>
-                              <div className="flex flex-col">
+                              <div className="flex items-center justify-between w-full">
                                 <span className="text-sm font-medium">{lang}</span>
-                                <span className="text-xs text-gray-500">Code: {languageCodeMap[lang]}</span>
+                                <span className="text-xs text-gray-500 ml-2">({languageCodeMap[lang]})</span>
                               </div>
                             </SelectItem>
                           ))}
@@ -737,27 +816,68 @@ ${instructorNotes}
                       <Label htmlFor="voice" className="text-base font-medium">
                         AI Voice
                       </Label>
-                      <Select value={voice} onValueChange={(value) => handleFieldChange('voice', value)}>
+                      <Select value={practiceCase?.voice || "verse"} onValueChange={(value) => handleFieldChange('voice', value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select AI voice" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="w-full">
                           {voiceOptions.map((voiceOption) => (
                             <SelectItem key={voiceOption.id} value={voiceOption.id}>
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">{voiceOption.name}</span>
-                                <span className="text-xs text-gray-500">{voiceOption.description}</span>
+                              <div className="flex items-center justify-between w-full min-w-0">
+                                <span className="text-sm font-medium truncate">{voiceOption.name}</span>
+                                <span className="text-xs text-gray-500 ml-2">{voiceOption.description}</span>
                               </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      
+                      {/* Voice Preview Section */}
+                      {practiceCase?.voice && (
+                        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-medium text-blue-900">
+                                Selected: {voiceOptions.find(v => v.id === practiceCase?.voice)?.name}
+                              </h4>
+                              <p className="text-xs text-blue-700 truncate">
+                                {voiceOptions.find(v => v.id === practiceCase?.voice)?.description}
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled
+                              onClick={() => playVoicePreview(practiceCase?.voice || "verse")}
+                              className="flex items-center space-x-2 border-blue-300 text-blue-700 hover:bg-blue-100 ml-3"
+                            >
+                              <Volume2 className="h-4 w-4" />
+                              <span>Preview</span>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      
                       <p className="text-sm text-gray-600">
-                        The AI voice personality for the conversation partner
+                        The AI voice personality for the conversation partner. Use the preview button to hear each voice (feature coming soon).
                       </p>
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+
+              {/* Tab Navigation */}
+              <div className="flex justify-end pt-6 border-t">
+                <Button 
+                  onClick={() => {
+                    setActiveTab("content");
+                    window.scrollTo(0, 0);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Next: Content & Goals
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
               </div>
             </TabsContent>
 
@@ -781,8 +901,8 @@ ${instructorNotes}
                       </Label>
                       <Textarea
                         id="proficiency"
-                        value={proficiencyLevel}
-                        onChange={(e) => handleFieldChange('proficiencyLevel', e.target.value)}
+                        value={practiceCase?.proficiency_level || ""}
+                        onChange={(e) => handleFieldChange('proficiency_level', e.target.value)}
                         placeholder="e.g., Intermediate level students who can form basic sentences but need practice with specific vocabulary..."
                         className="min-h-[100px]"
                       />
@@ -797,9 +917,9 @@ ${instructorNotes}
                       </Label>
                       <Textarea
                         id="goals"
-                        value={curricularGoals}
-                        onChange={(e) => handleFieldChange('curricularGoals', e.target.value)}
-                        placeholder="e.g., Practice food vocabulary, polite requests, and restaurant etiquette..."
+                        value={practiceCase?.curricular_goals || ""}
+                        onChange={(e) => handleFieldChange('curricular_goals', e.target.value)}
+                        placeholder="e.g., Practice food-related vocabulary, work on the simple past, practice polite phrases..."
                         className="min-h-[120px]"
                       />
                       <p className="text-sm text-gray-600">
@@ -813,9 +933,9 @@ ${instructorNotes}
                       </Label>
                       <Textarea
                         id="key-items"
-                        value={keyItems}
-                        onChange={(e) => handleFieldChange('keyItems', e.target.value)}
-                        placeholder="e.g., Menu items, dietary restrictions, payment methods, table service expressions..."
+                        value={practiceCase?.key_items || ""}
+                        onChange={(e) => handleFieldChange('key_items', e.target.value)}
+                        placeholder="e.g., Menu items, payment methods, customer service expressions, medical considerations..."
                         className="min-h-[120px]"
                       />
                       <p className="text-sm text-gray-600">
@@ -824,6 +944,31 @@ ${instructorNotes}
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+
+              {/* Tab Navigation */}
+              <div className="flex justify-between pt-6 border-t">
+                <Button 
+                  onClick={() => {
+                    setActiveTab("basics");
+                    window.scrollTo(0, 0);
+                  }}
+                  variant="outline"
+                  className="bg-white border-gray-300 hover:bg-gray-50"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Back: Basic Info
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setActiveTab("scenario");
+                    window.scrollTo(0, 0);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Next: Scenario Setup
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
               </div>
             </TabsContent>
 
@@ -847,8 +992,8 @@ ${instructorNotes}
                       </Label>
                       <Textarea
                         id="situation"
-                        value={situationInstructions}
-                        onChange={(e) => handleFieldChange('situationInstructions', e.target.value)}
+                        value={practiceCase?.situation_instructions || ""}
+                        onChange={(e) => handleFieldChange('situation_instructions', e.target.value)}
                         placeholder="e.g., You are a friendly server at a traditional Spanish restaurant. The student is a customer who wants to order food. Be patient and helpful..."
                         className="min-h-[140px]"
                       />
@@ -863,8 +1008,8 @@ ${instructorNotes}
                       </Label>
                       <Textarea
                         id="behavioral"
-                        value={behavioralGuidelines}
-                        onChange={(e) => handleFieldChange('behavioralGuidelines', e.target.value)}
+                        value={practiceCase?.behavioral_guidelines || ""}
+                        onChange={(e) => handleFieldChange('behavioral_guidelines', e.target.value)}
                         placeholder="e.g., Be patient with beginners, speak clearly, and use appropriate restaurant terminology..."
                         className="min-h-[140px]"
                       />
@@ -879,8 +1024,8 @@ ${instructorNotes}
                       </Label>
                       <Textarea
                         id="instructor-notes"
-                        value={instructorNotes}
-                        onChange={(e) => handleFieldChange('instructorNotes', e.target.value)}
+                        value={practiceCase?.instructor_notes || ""}
+                        onChange={(e) => handleFieldChange('instructor_notes', e.target.value)}
                         placeholder="e.g., Focus on politeness expressions and handling misunderstandings gracefully..."
                         className="min-h-[120px]"
                       />
@@ -890,6 +1035,95 @@ ${instructorNotes}
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+
+              {/* Tab Navigation */}
+              <div className="flex justify-between pt-6 border-t">
+                <Button 
+                  onClick={() => {
+                    setActiveTab("content");
+                    window.scrollTo(0, 0);
+                  }}
+                  variant="outline"
+                  className="bg-white border-gray-300 hover:bg-gray-50"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Back: Content & Goals
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setActiveTab("feedback");
+                    window.scrollTo(0, 0);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Next: AI Feedback
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="feedback">
+            <FeedbackConfiguration
+              key={practiceCase?.id}                     // forces remount when you load a new case
+              initialFeedbackPrompt={practiceCase?.feedback_prompt || ''}
+              onFeedbackChange={handleFeedbackChange}
+            />
+
+
+
+              {/* Tab Navigation */}
+              <div className="flex justify-between pt-6 border-t">
+                <Button 
+                  onClick={() => {
+                    setActiveTab("scenario");
+                    window.scrollTo(0, 0);
+                  }}
+                  variant="outline"
+                  className="bg-white border-gray-300 hover:bg-gray-50"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Back: Scenario Setup
+                </Button>
+                <div className="flex space-x-3">
+                  <Button 
+                    onClick={handleSaveDraft}
+                    disabled={isSaving}
+                    variant="outline"
+                    className="bg-white border-gray-300 hover:bg-gray-50"
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Draft
+                      </>
+                    )}
+                  </Button>
+                  {canPublish() && (
+                    <Button 
+                      onClick={handlePublish}
+                      disabled={isSaving}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {isSaving ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Publishing...
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Publish Case
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
             </TabsContent>
           </Tabs>
@@ -902,27 +1136,80 @@ ${instructorNotes}
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Save className="h-5 w-5 text-blue-600" />
-                <span>Save Changes</span>
+                <span>Save & Publish</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Save Draft Button - Always available */}
               <Button 
-                onClick={handleSave}
+                onClick={handleSaveDraft}
                 disabled={isSaving}
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                variant="outline"
+                className="w-full"
               >
                 {isSaving ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
                     Saving...
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    {isNew ? 'Create Practice Case' : 'Save Changes'}
+                    {isNew ? 'Save as Draft' : 'Save Changes'}
                   </>
                 )}
               </Button>
+
+              {/* Publish Button - Only available when validation passes */}
+              <Button 
+                onClick={handlePublish}
+                disabled={isSaving || !canPublish()}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" />
+                    {isNew ? 'Save & Publish' : 'Publish Case'}
+                  </>
+                )}
+              </Button>
+
+              {/* Updated Validation Status */}
+              {!canPublish() ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start space-x-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800">Required to publish</p>
+                      <ul className="text-xs text-amber-700 mt-1 space-y-1">
+                        {validateForPublishing().slice(0, 3).map((error, index) => (
+                          <li key={index}>• {error}</li>
+                        ))}
+                        {validateForPublishing().length > 3 && (
+                          <li>• And {validateForPublishing().length - 3} more...</li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ) : !practiceCase?.published && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-start space-x-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-green-800">Ready to publish!</p>
+                      <p className="text-xs text-green-700 mt-1">
+                        All required fields are complete. Click "Publish Case" to make this available to students.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <Button 
                 variant="outline" 
@@ -954,12 +1241,27 @@ ${instructorNotes}
                 </Button>
               )}
 
-              {hasUnsavedChanges && (
-                <div className="text-sm text-amber-600 flex items-center space-x-2 pt-2 border-t">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>You have unsaved changes</span>
-                </div>
-              )}
+              {/* Status indicators */}
+              <div className="space-y-2 pt-2 border-t">
+                {isAutoSaving && (
+                  <div className="text-sm text-blue-600 flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                    <span>Auto-saving...</span>
+                  </div>
+                )}
+                {hasUnsavedChanges && !isAutoSaving && (
+                  <div className="text-sm text-amber-600 flex items-center space-x-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>You have unsaved changes</span>
+                  </div>
+                )}
+                {!hasUnsavedChanges && !isAutoSaving && !isNew && (
+                  <div className="text-sm text-green-600 flex items-center space-x-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>All changes saved</span>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -978,11 +1280,11 @@ ${instructorNotes}
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Language:</span>
-                <span className="font-medium">{language || 'Not set'}</span>
+                <span className="font-medium">{practiceCase?.target_language || 'Not set'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Voice:</span>
-                <span className="font-medium capitalize">{voice}</span>
+                <span className="font-medium capitalize">{practiceCase?.voice || 'verse'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Duration:</span>
@@ -1004,9 +1306,24 @@ ${instructorNotes}
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
-                <Badge variant={practiceCase?.published ? "default" : "secondary"}>
-                  {practiceCase?.published ? "Published" : "Draft"}
-                </Badge>
+                <div className="flex items-center space-x-1">
+                  {practiceCase?.published ? (
+                    <Badge variant="default" className="text-green-700 bg-green-100 border-green-300">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Published
+                    </Badge>
+                  ) : practiceCase?.is_draft ? (
+                    <Badge variant="secondary" className="text-gray-700 bg-gray-100 border-gray-300">
+                      <Edit className="h-3 w-3 mr-1" />
+                      Draft
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-yellow-700 bg-yellow-100 border-yellow-300">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Unpublished
+                    </Badge>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1021,35 +1338,88 @@ ${instructorNotes}
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-blue-700">
               <div className="space-y-2">
+                <div>• Your progress is automatically saved as you work</div>
+                <div>• Save drafts anytime to preserve your work</div>
+                <div>• Complete all required fields to publish</div>
                 <div>• Keep scenario instructions clear and specific</div>
                 <div>• Match time limits to student proficiency level</div>
                 <div>• Include cultural context in behavioral guidelines</div>
-                <div>• Test your case before making it available</div>
-                <div>• Consider real-world conversation dynamics</div>
-                <div>• Set realistic expectations for student responses</div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
-
+      
       {/* Bottom Actions for Mobile */}
       <div className="xl:hidden border-t pt-6 mt-8">
         <div className="flex flex-col space-y-3">
+          {/* Updated Validation Status for Mobile */}
+          {!canPublish() ? (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-amber-800">Required to publish</p>
+                  <ul className="text-xs text-amber-700 mt-1 space-y-1">
+                    {validateForPublishing().slice(0, 2).map((error, index) => (
+                      <li key={index}>• {error}</li>
+                    ))}
+                    {validateForPublishing().length > 2 && (
+                      <li>• And {validateForPublishing().length - 2} more...</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          ) : !practiceCase?.published && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-start space-x-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-green-800">Ready to publish!</p>
+                  <p className="text-xs text-green-700 mt-1">
+                    All required fields are complete.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Save Draft Button - Always first and available */}
           <Button 
-            onClick={handleSave}
+            onClick={handleSaveDraft}
             disabled={isSaving}
-            className="w-full bg-blue-600 hover:bg-blue-700"
+            variant="outline"
+            className="w-full"
           >
             {isSaving ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
                 Saving...
               </>
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                {isNew ? 'Create Practice Case' : 'Save Changes'}
+                {isNew ? 'Save as Draft' : 'Save Changes'}
+              </>
+            )}
+          </Button>
+
+          {/* Publish Button - Only when validation passes */}
+          <Button 
+            onClick={handlePublish}
+            disabled={isSaving || !canPublish()}
+            className="w-full bg-blue-600 hover:bg-blue-700"
+          >
+            {isSaving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Publishing...
+              </>
+            ) : (
+              <>
+                <Eye className="h-4 w-4 mr-2" />
+                {isNew ? 'Save & Publish' : 'Publish Case'}
               </>
             )}
           </Button>

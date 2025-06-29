@@ -33,6 +33,7 @@ interface Student {
   email: string;
   sessionsCompleted: number;
   lastActive: string;
+  lastLoginTimestamp?: string; // Optional for future use
 }
 
 interface PracticeCase {
@@ -41,12 +42,14 @@ interface PracticeCase {
   description: string;
   studentsUsed?: number;
   completionRate?: number;
+  published?: boolean;
 }
 
 const InstructorDashboard: React.FC = () => {
   const { selectedClass, apiParams } = useClass();
   const [studentEngagement, setStudentEngagement] = useState<Student[]>([]);
   const [recentPracticeCases, setRecentPracticeCases] = useState<PracticeCase[]>([]);
+  const [allPracticeCases, setAllPracticeCases] = useState<PracticeCase[]>([]);
   const [analyticsData, setAnalyticsData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [studentCount, setStudentCount] = useState(0);
@@ -85,6 +88,7 @@ const InstructorDashboard: React.FC = () => {
       ).length;
       setActiveStudents(activeCount);
       
+      setAllPracticeCases(practiceData);
       setRecentPracticeCases(practiceData.slice(0, 3));
       setCaseCount(practiceData.length);
       
@@ -122,35 +126,30 @@ const InstructorDashboard: React.FC = () => {
     return studentCount > 0 ? Math.round((activeStudents / studentCount) * 100) : 0;
   };
 
-  const getEngagementColor = () => {
-    const rate = getEngagementRate();
-    if (rate >= 80) return "text-green-600 bg-green-50 border-green-200";
-    if (rate >= 60) return "text-yellow-600 bg-yellow-50 border-yellow-200";
-    return "text-red-600 bg-red-50 border-red-200";
-  };
-
   const getTotalSessionsCompleted = () => {
     if (!Array.isArray(studentEngagement)) return 0;
     return studentEngagement.reduce((sum, student) => sum + student.sessionsCompleted, 0);
   };
 
-  const getMostActivePeriod = () => {
-    // This would ideally come from analytics, but for now we'll show a placeholder
-    return "This Week";
-  };
-
   const getRecentActivityCount = () => {
     if (!Array.isArray(studentEngagement)) return 0;
-    // Count students active in last 7 days (this is simplified - in real app you'd check actual dates)
-    return studentEngagement.filter(student => 
-      student.lastActive && student.lastActive !== "Never" && student.lastActive !== "No activity"
-    ).length;
+    
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    return studentEngagement.filter(student => {
+      if (!student.lastLoginTimestamp) return false;
+      
+      const lastLogin = new Date(student.lastLoginTimestamp);
+      return lastLogin >= sevenDaysAgo;
+    }).length;
   };
 
   const getPublishedCasesCount = () => {
-    if (!Array.isArray(recentPracticeCases)) return 0;
-    // This would ideally come from the full practice cases data with published status
-    return Math.floor(caseCount * 0.8); // Approximation for demo
+    if (!Array.isArray(allPracticeCases)) return 0;
+    
+    // Count cases that have the published property set to true
+    return allPracticeCases.filter(practiceCase => practiceCase.published === true).length;
   };
 
   const formatDisplayName = (name: string) => {
@@ -182,7 +181,7 @@ const InstructorDashboard: React.FC = () => {
                     <div>
                       <div className="text-2xl font-bold text-blue-900">{studentCount}</div>
                       <div className="text-sm text-blue-700">Total Students</div>
-                      <div className="text-xs text-blue-600">{getRecentActivityCount()} recently active</div>
+                      <div className="text-xs text-blue-600">{getRecentActivityCount()} active this week</div>
                     </div>
                   </div>
                 </CardContent>

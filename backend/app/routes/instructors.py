@@ -142,7 +142,8 @@ def get_students_engagement():
             "name": student.full_name,
             "email": student.email,
             "sessionsCompleted": conversation_count,
-            "lastActive": format_last_active(student.last_login)
+            "lastActive": format_last_active(student.last_login),
+            "lastLoginTimestamp": student.last_login.isoformat() if student.last_login else None
         })
 
     return jsonify(student_data), 200

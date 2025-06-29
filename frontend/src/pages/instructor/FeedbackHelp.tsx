@@ -33,7 +33,11 @@ import {
   Zap,
   PlayCircle,
   FileText,
-  Star
+  Star,
+  Settings,
+  BarChart3,
+  Edit,
+  GraduationCap
 } from "lucide-react";
 import {
   Accordion,
@@ -42,7 +46,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-const FeedbackHelp: React.FC = () => {
+const InstructorFeedbackHelp: React.FC = () => {
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -63,7 +67,7 @@ const FeedbackHelp: React.FC = () => {
       if (!response.ok) throw new Error("Failed to submit feedback");
       setStatusMessage({
         type: 'success',
-        message: 'Your feedback has been submitted successfully. Thank you for helping us improve!'
+        message: 'Your feedback has been submitted successfully. Thank you for helping us improve the instructor experience!'
       });
       setFeedback("");
     } catch (error) {
@@ -77,44 +81,46 @@ const FeedbackHelp: React.FC = () => {
     }
   };
 
-  // Mock data - replace with real API calls
-  const helpStats = {
-    totalCases: 24,
-    avgSessionLength: "8.5",
-    systemUptime: "99.9",
-    totalSessions: 1250
-  };
-
   const faqItems = [
     {
-      question: "How long should my practice sessions last?",
-      answer: "Each practice case has a minimum required time, typically between 5-10 minutes. However, we encourage you to continue conversations as long as they remain productive. The system will indicate when you've reached the minimum required time.",
-      category: "sessions"
+      question: "How do I create effective practice cases for my students?",
+      answer: "Focus on realistic scenarios your students will encounter. Include clear situation instructions, specific learning objectives, and appropriate behavioral guidelines. Test your cases before publishing to ensure they work as expected. Consider your students' proficiency level when setting time requirements.",
+      category: "creation"
     },
     {
-      question: "What if I don't understand something during the conversation?",
-      answer: "It's perfectly fine to ask for clarification! Just like in a real conversation, you can ask the system to repeat information, explain something, or speak more slowly. This is part of natural language practice.",
-      category: "conversation"
+      question: "How can I track my students' progress and engagement?",
+      answer: "Use the Students page to monitor individual student activity and the Analytics page to see overall class performance. You can view completion rates, time spent, and identify which practice cases are most effective for your class.",
+      category: "monitoring"
     },
     {
-      question: "How is my performance evaluated?",
-      answer: "The system analyzes various aspects of your language use, including vocabulary range, grammatical accuracy, fluency, pronunciation, and communication strategies. The feedback aims to be constructive, highlighting both strengths and areas for improvement.",
+      question: "What should I do if students report technical issues?",
+      answer: "Common issues include microphone permissions and browser compatibility. Ensure students are using a supported browser (Chrome, Firefox, Safari) and have granted microphone access. Check that practice cases are published and accessible. If issues persist, submit a feedback report with specific details.",
+      category: "technical"
+    },
+    {
+      question: "How do I add or remove students from my class?",
+      answer: "Go to the Students page and use the 'Add Student' button to invite new students by email. You can remove students using the remove button next to their name. Students who are removed will lose access to class materials but their progress data is preserved.",
+      category: "management"
+    },
+    {
+      question: "Can I edit practice cases after students have used them?",
+      answer: "Yes, you can edit published practice cases at any time. However, be aware that changes will affect all future student interactions. Existing student data and feedback will not be retroactively changed. Consider creating a new version if you're making major changes.",
+      category: "editing"
+    },
+    {
+      question: "How is student performance evaluated by the AI?",
+      answer: "The AI analyzes students' language use across multiple dimensions including vocabulary range, grammatical accuracy, fluency, pronunciation, and communication effectiveness. The feedback is designed to be constructive and specific, helping students understand their strengths and areas for improvement.",
       category: "evaluation"
     },
     {
-      question: "Can I practice the same scenario multiple times?",
-      answer: "Yes! We encourage practicing scenarios multiple times. The conversation will vary slightly each time based on your responses, and you can focus on improving different aspects of your language skills with each attempt.",
-      category: "practice"
+      question: "Can I export student data and analytics?",
+      answer: "Yes, both the Students and Analytics pages have export features that download CSV files with relevant data. This includes student engagement metrics, practice case analytics, and performance summaries that you can use for grading or progress tracking.",
+      category: "data"
     },
     {
-      question: "Is my practice data being saved?",
-      answer: "Yes, your conversation data is saved to help track your progress and provide personalized feedback. This data is also used for research purposes to improve the system, but your personal information remains confidential and secure.",
-      category: "privacy"
-    },
-    {
-      question: "What if I have technical issues during a session?",
-      answer: "If you encounter technical issues, first try refreshing the page. If problems persist, check your microphone settings and browser permissions. For ongoing issues, please submit feedback through the feedback tab with details about the problem you're experiencing.",
-      category: "technical"
+      question: "What's the difference between drafts and published cases?",
+      answer: "Draft cases are only visible to you and can be edited freely. Published cases are available to students and should be complete with all required fields filled. You can save drafts at any time and publish them when ready. Only published cases appear in student interfaces.",
+      category: "publishing"
     }
   ];
 
@@ -125,15 +131,15 @@ const FeedbackHelp: React.FC = () => {
 
   return (
     <div className="w-full px-6 py-6 space-y-8">
-      {/* Simplified Header */}
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="space-y-1"
       >
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Help & Support</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Instructor Help & Support</h1>
         <p className="text-gray-600">
-          Get help using the system and share your feedback to help us improve
+          Learn how to effectively use ChitterChatter in your classroom and share feedback to improve the platform
         </p>
       </motion.div>
 
@@ -169,14 +175,14 @@ const FeedbackHelp: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Enhanced Tabs */}
+      {/* Tabs */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
         <Tabs defaultValue="guide" className="space-y-6">
           <div className="flex justify-center w-full">
             <TabsList className="grid grid-cols-3 w-full max-w-md bg-white border">
               <TabsTrigger value="guide" className="flex items-center space-x-2">
                 <Lightbulb className="h-4 w-4" />
-                <span>Quick Start</span>
+                <span>Getting Started</span>
               </TabsTrigger>
               <TabsTrigger value="faq" className="flex items-center space-x-2">
                 <HelpCircle className="h-4 w-4" />
@@ -189,7 +195,7 @@ const FeedbackHelp: React.FC = () => {
             </TabsList>
           </div>
 
-          {/* QUICK START TAB */}
+          {/* GETTING STARTED TAB */}
           <TabsContent value="guide">
             <div className="space-y-6">
               {/* Quick Start Guide */}
@@ -200,9 +206,9 @@ const FeedbackHelp: React.FC = () => {
                       <Zap className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-gray-900">Quick Start Guide</CardTitle>
+                      <CardTitle className="text-gray-900">Instructor Quick Start</CardTitle>
                       <CardDescription className="text-gray-600">
-                        Get up and running in just a few steps
+                        Set up your class and create practice cases in minutes
                       </CardDescription>
                     </div>
                   </div>
@@ -211,58 +217,58 @@ const FeedbackHelp: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="text-center space-y-3">
                       <div className="bg-blue-100 p-3 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
-                        <BookOpen className="h-8 w-8 text-blue-600" />
+                        <Users className="h-8 w-8 text-blue-600" />
                       </div>
-                      <h3 className="font-semibold text-gray-900">1. Choose a Case</h3>
-                      <p className="text-sm text-gray-600">Browse and select a practice scenario that interests you</p>
+                      <h3 className="font-semibold text-gray-900">1. Add Students</h3>
+                      <p className="text-sm text-gray-600">Invite students to your class using their email addresses</p>
                     </div>
                     <div className="text-center space-y-3">
                       <div className="bg-green-100 p-3 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
-                        <PlayCircle className="h-8 w-8 text-green-600" />
+                        <Edit className="h-8 w-8 text-green-600" />
                       </div>
-                      <h3 className="font-semibold text-gray-900">2. Start Practicing</h3>
-                      <p className="text-sm text-gray-600">Allow microphone access and begin your conversation</p>
+                      <h3 className="font-semibold text-gray-900">2. Create Cases</h3>
+                      <p className="text-sm text-gray-600">Design practice scenarios tailored to your curriculum</p>
                     </div>
                     <div className="text-center space-y-3">
                       <div className="bg-purple-100 p-3 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
-                        <Star className="h-8 w-8 text-purple-600" />
+                        <BarChart3 className="h-8 w-8 text-purple-600" />
                       </div>
-                      <h3 className="font-semibold text-gray-900">3. Get Feedback</h3>
-                      <p className="text-sm text-gray-600">Review AI-generated feedback on your performance</p>
+                      <h3 className="font-semibold text-gray-900">3. Monitor Progress</h3>
+                      <p className="text-sm text-gray-600">Track student engagement and analyze performance data</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* About ChitterChatter */}
+                {/* About ChitterChatter for Instructors */}
                 <Card className="shadow-lg border-0 bg-white">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
-                      <Lightbulb className="h-5 w-5 text-blue-600" />
-                      <span>About ChitterChatter</span>
+                      <GraduationCap className="h-5 w-5 text-blue-600" />
+                      <span>ChitterChatter for Instructors</span>
                     </CardTitle>
                     <CardDescription>
-                      Your AI-powered language practice companion
+                      Powerful tools for language educators
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-gray-700">
-                      ChitterChatter provides realistic practice experiences to help you develop language proficiency 
-                      through interactive conversations that mirror real-world situations.
+                      ChitterChatter empowers language instructors to create immersive, AI-driven practice experiences 
+                      that complement traditional classroom instruction and provide valuable insights into student progress.
                     </p>
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        <span className="text-sm text-gray-600">Authentic conversation scenarios</span>
+                        <span className="text-sm text-gray-600">Custom practice scenario creation</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        <span className="text-sm text-gray-600">AI-powered feedback and analysis</span>
+                        <span className="text-sm text-gray-600">Student progress tracking and analytics</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        <span className="text-sm text-gray-600">Progress tracking and insights</span>
+                        <span className="text-sm text-gray-600">Automated performance feedback</span>
                       </div>
                     </div>
                   </CardContent>
@@ -273,16 +279,16 @@ const FeedbackHelp: React.FC = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Video className="h-5 w-5 text-gray-600" />
-                      <span>Video Tutorial</span>
+                      <span>Instructor Tutorial</span>
                     </CardTitle>
                     <CardDescription>
-                      Watch a walkthrough of system features
+                      Watch a complete walkthrough for educators
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="bg-gray-100 rounded-lg p-8 text-center">
                       <Video className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                      <p className="text-gray-500 mb-4">Video tutorial coming soon</p>
+                      <p className="text-gray-500 mb-4">Instructor tutorial coming soon</p>
                       <Button variant="outline" disabled>
                         <PlayCircle className="h-4 w-4 mr-2" />
                         Watch Tutorial
@@ -292,15 +298,15 @@ const FeedbackHelp: React.FC = () => {
                 </Card>
               </div>
 
-              {/* Detailed Steps */}
+              {/* Detailed Instructor Workflow */}
               <Card className="shadow-lg border-0 bg-white">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
-                    <FileText className="h-5 w-5 text-gray-700" />
-                    <span>Detailed Instructions</span>
+                    <Settings className="h-5 w-5 text-gray-700" />
+                    <span>Complete Instructor Workflow</span>
                   </CardTitle>
                   <CardDescription>
-                    Step-by-step guide to using the system effectively
+                    Step-by-step guide to using ChitterChatter in your classroom
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -308,38 +314,38 @@ const FeedbackHelp: React.FC = () => {
                     {[
                       {
                         step: "1",
-                        title: "Select a Practice Case",
-                        description: "From the Practice page, browse available cases and select one that interests you. Each case has a different scenario and language focus area.",
+                        title: "Class Setup and Student Management",
+                        description: "Navigate to the Students page to add your students by email. Students will receive access to your class materials automatically. You can add or remove students at any time during the semester.",
                         color: "blue"
                       },
                       {
                         step: "2", 
-                        title: "Begin the Conversation",
-                        description: "When prompted, allow microphone access. The system will guide you through the conversation, responding naturally to your input.",
+                        title: "Design Practice Cases",
+                        description: "Go to Lessons and create practice cases that align with your curriculum. Define clear scenarios, learning objectives, and behavioral guidelines. Save drafts as you work and publish when ready.",
                         color: "green"
                       },
                       {
                         step: "3",
-                        title: "Engage in Natural Conversation", 
-                        description: "Speak as you would in a real-life situation. The conversation partner will adapt to your responses, creating an authentic dialogue experience.",
+                        title: "Set Appropriate Difficulty and Time Limits", 
+                        description: "Configure minimum and maximum time limits based on your students' proficiency level. Consider the complexity of vocabulary and grammar structures when setting expectations.",
                         color: "purple"
                       },
                       {
                         step: "4",
-                        title: "Complete the Minimum Time",
-                        description: "Each practice session has a minimum required conversation time. Try to maintain the conversation until you reach this threshold.",
+                        title: "Schedule and Publish Cases",
+                        description: "Set accessibility dates for practice cases to align with your lesson plans. Students will only see cases that are published and accessible, giving you full control over the timeline.",
                         color: "orange"
                       },
                       {
                         step: "5", 
-                        title: "Review Your Feedback",
-                        description: "After completing a session, you'll receive AI-generated feedback on your performance, including strengths and areas for improvement.",
+                        title: "Monitor Student Activity",
+                        description: "Use the Students page to track individual progress and the Analytics page to analyze class-wide performance. Export data for gradebook integration or progress reports.",
                         color: "red"
                       },
                       {
                         step: "6",
-                        title: "Track Your Progress",
-                        description: "Visit the Progress page to see your improvement over time, including statistics on completed cases and performance metrics.",
+                        title: "Review and Iterate",
+                        description: "Analyze which practice cases are most effective and modify or create new ones based on student performance data. Use analytics to identify students who may need additional support.",
                         color: "indigo"
                       }
                     ].map((item, index) => (
@@ -367,17 +373,17 @@ const FeedbackHelp: React.FC = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search frequently asked questions..."
+                    placeholder="Search instructor questions..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs">Sessions</Badge>
+                  <Badge variant="outline" className="text-xs">Creation</Badge>
+                  <Badge variant="outline" className="text-xs">Management</Badge>
+                  <Badge variant="outline" className="text-xs">Analytics</Badge>
                   <Badge variant="outline" className="text-xs">Technical</Badge>
-                  <Badge variant="outline" className="text-xs">Privacy</Badge>
-                  <Badge variant="outline" className="text-xs">Evaluation</Badge>
                 </div>
               </Card>
 
@@ -386,7 +392,7 @@ const FeedbackHelp: React.FC = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <MessageSquare className="h-5 w-5 text-blue-600" />
-                    <span>Frequently Asked Questions</span>
+                    <span>Instructor Frequently Asked Questions</span>
                   </CardTitle>
                   <CardDescription>
                     {filteredFAQ.length} questions found
@@ -440,9 +446,9 @@ const FeedbackHelp: React.FC = () => {
                       <MessageSquare className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-gray-900">Submit Feedback</CardTitle>
+                      <CardTitle className="text-gray-900">Submit Instructor Feedback</CardTitle>
                       <CardDescription className="text-gray-600">
-                        Help us improve ChitterChatter with your suggestions and reports
+                        Help us improve ChitterChatter for educators with your suggestions and reports
                       </CardDescription>
                     </div>
                   </div>
@@ -455,17 +461,18 @@ const FeedbackHelp: React.FC = () => {
                           Your Feedback
                         </label>
                         <Textarea
-                          placeholder="Describe your feedback, suggestions, or issues in detail. Include steps to reproduce any problems you encountered..."
+                          placeholder="Share your experience using ChitterChatter in your classroom. Include suggestions for new features, issues with existing functionality, or ideas for improving the instructor interface..."
                           value={feedback}
                           onChange={(e) => setFeedback(e.target.value)}
                           className="min-h-[150px]"
                         />
                       </div>
                       
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm text-gray-600">
-                          <strong>Tip:</strong> For bug reports, please include your browser version, 
-                          operating system, and the specific steps that led to the issue.
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <p className="text-sm text-blue-700">
+                          <strong>We value your input:</strong> As an educator, your feedback helps us understand 
+                          how ChitterChatter fits into real classroom environments and what features would be most 
+                          valuable for language instruction.
                         </p>
                       </div>
                     </div>
@@ -490,4 +497,4 @@ const FeedbackHelp: React.FC = () => {
   );
 };
 
-export default FeedbackHelp;
+export default InstructorFeedbackHelp;

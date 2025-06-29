@@ -65,7 +65,11 @@ const VoiceChat: React.FC = () => {
 
   const handleModalClose = (open: boolean) => {
     if (!open) {
-      navigate("/practice");
+      if (userRole === "instructor") {
+        navigate("/instructor/lessons");
+      } else {
+        navigate("/practice");
+      }
     }
   };
 
@@ -219,89 +223,127 @@ const VoiceChat: React.FC = () => {
   };
   
   
-  const stopSession = async () => {
-    setIsEndingConversation(true);
+const stopSession = async () => {
+  setIsEndingConversation(true);
 
-    await new Promise(resolve => setTimeout(resolve, 100)); // Ensure UI updates before API call
+  await new Promise(resolve => setTimeout(resolve, 100)); // Ensure UI updates before API call
 
-    if (pc) {
-      pc.getSenders().forEach((sender) => {
-        if (sender.track) sender.track.stop();
-      });
-      pc.close();
-      setPc(null);
-    }
-  
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
-      setLocalStream(null);
-    }
-    
-    if (conversationIdRef.current) {
-      // Begin exit animation for the conversation area
-      setIsExiting(true);
-      setTimeout(async () => {
-        setShowConversationArea(false);
-        setIsEndingConversation(false);
-        setIsWaitingForFeedback(true);
-        try {
-          const response = await fetchWithAuth(
-            `/api/conversations/conversation/${conversationIdRef.current}/end`,
-            { method: "POST" }
-          );
-          await response.json();
-          // Keep the waiting view visible and delay navigation for a smooth transition
-          setTimeout(() => {
-            navigate(`/feedback/${conversationIdRef.current}`);
-          }, 1000); // additional delay to let the waiting view settle
-        } catch (err) {
-          console.error("Error ending conversation:", err);
-        }
-      }, 600); // Duration matches the exit animation
-    }    
-  };
-  
-  const cancelSession = async () => {
-    // Note: isEndingConversation is now set directly in the button click handler
-    
-    if (pc) {
-      pc.getSenders().forEach((sender) => {
-        if (sender.track) sender.track.stop();
-      });
-      pc.close();
-      setPc(null);
-    }
-  
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
-      setLocalStream(null);
-    }
-  
-    // ✅ Ensure conversationIdRef.current exists before making a request
-    if (conversationIdRef.current) {
-      try {
-        const response = await fetchWithAuth(`/api/conversations/conversation/${conversationIdRef.current}/end`, {
-          method: "POST",
-        });
-  
-        if (!response.ok) throw new Error("Failed to update conversation end time");
-        
-        console.log("Conversation canceled successfully.");
-      } catch (error) {
-        console.error("Error canceling conversation:", error);
+  // Close peer connection and stop all tracks
+  if (pc) {
+    pc.getSenders().forEach((sender) => {
+      if (sender.track) {
+        sender.track.stop();
       }
-    }
-    
-    // Add a small delay to ensure user sees the "Ending conversation" message
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    });
+    pc.getReceivers().forEach((receiver) => {
+      if (receiver.track) {
+        receiver.track.stop();
+      }
+    });
+    pc.close();
+    setPc(null);
+  }
+
+  // Stop local stream tracks (microphone/camera)
+  if (localStream) {
+    localStream.getTracks().forEach((track) => {
+      track.stop();
+      console.log(`Stopped ${track.kind} track:`, track.label);
+    });
+    setLocalStream(null);
+  }
+
+  // Stop remote stream tracks
+  if (remoteStream) {
+    remoteStream.getTracks().forEach((track) => {
+      track.stop();
+    });
+    setRemoteStream(null);
+  }
   
-    // ✅ Redirect user based on role
-    if (userRole === "instructor") {
-      navigate("/instructor/lessons");
-    } else {
-      navigate("/practice");
+  if (conversationIdRef.current) {
+    // Begin exit animation for the conversation area
+    setIsExiting(true);
+    setTimeout(async () => {
+      setShowConversationArea(false);
+      setIsEndingConversation(false);
+      setIsWaitingForFeedback(true);
+      try {
+        const response = await fetchWithAuth(
+          `/api/conversations/conversation/${conversationIdRef.current}/end`,
+          { method: "POST" }
+        );
+        await response.json();
+        // Keep the waiting view visible and delay navigation for a smooth transition
+        setTimeout(() => {
+          navigate(`/feedback/${conversationIdRef.current}`);
+        }, 1000); // additional delay to let the waiting view settle
+      } catch (err) {
+        console.error("Error ending conversation:", err);
+      }
+    }, 600); // Duration matches the exit animation
+  }    
+};
+
+const cancelSession = async () => {
+  // Close peer connection and stop all tracks
+  if (pc) {
+    pc.getSenders().forEach((sender) => {
+      if (sender.track) {
+        sender.track.stop();
+      }
+    });
+    pc.getReceivers().forEach((receiver) => {
+      if (receiver.track) {
+        receiver.track.stop();
+      }
+    });
+    pc.close();
+    setPc(null);
+  }
+
+  // Stop local stream tracks (microphone/camera)
+  if (localStream) {
+    localStream.getTracks().forEach((track) => {
+      track.stop();
+      console.log(`Stopped ${track.kind} track:`, track.label);
+    });
+    setLocalStream(null);
+  }
+
+  // Stop remote stream tracks
+  if (remoteStream) {
+    remoteStream.getTracks().forEach((track) => {
+      track.stop();
+    });
+    setRemoteStream(null);
+  }
+
+  // ✅ Ensure conversationIdRef.current exists before making a request
+  if (conversationIdRef.current) {
+    try {
+      const response = await fetchWithAuth(`/api/conversations/conversation/${conversationIdRef.current}/end`, {
+        method: "POST",
+      });
+
+      if (!response.ok) throw new Error("Failed to update conversation end time");
+      
+      console.log("Conversation canceled successfully.");
+    } catch (error) {
+      console.error("Error canceling conversation:", error);
     }
-  };
+  }
+  
+  // Add a small delay to ensure user sees the "Ending conversation" message
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // ✅ Redirect user based on role
+  if (userRole === "instructor") {
+    navigate("/instructor/lessons");
+  } else {
+    navigate("/practice");
+  }
+};
 
 
   const handleStopClick = () => {
@@ -373,6 +415,7 @@ const VoiceChat: React.FC = () => {
                 console.log("VoiceChat received elapsed:", elapsed);
                 setTimeElapsed(elapsed);
               }}
+              isEndingConversation={isEndingConversation}
             />
           </motion.div>
         )

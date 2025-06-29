@@ -20,6 +20,7 @@ interface PracticeCase {
   max_time: number;
   class_id: number;
   published: boolean;
+  is_draft: boolean;
   created_at?: string;
   accessible_on?: string;
 }
@@ -39,8 +40,11 @@ const Lessons: React.FC = () => {
     try {
       setIsLoading(true);
       
-      const queryString = apiParams.toString();
-      const url = `/api/practice_cases/get_cases${queryString ? `?${queryString}` : ''}`;
+      // Add include_drafts=true to show both published and draft cases
+      const params = new URLSearchParams(apiParams.toString());
+      params.set('include_drafts', 'true');
+      
+      const url = `/api/practice_cases/get_cases?${params.toString()}`;
       
       const response = await fetchWithAuth(url);
       if (!response.ok) throw new Error("Failed to fetch practice cases");
@@ -69,24 +73,23 @@ const Lessons: React.FC = () => {
 
     // Apply status filter
     if (filterBy === "published") {
-      filtered = filtered.filter((case_) => case_.published);
+      filtered = filtered.filter((case_) => case_.published && !case_.is_draft);
     } else if (filterBy === "draft") {
-      filtered = filtered.filter((case_) => !case_.published);
+      filtered = filtered.filter((case_) => case_.is_draft || !case_.published);
     }
 
     // Apply sorting
     filtered.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+
       switch (sortBy) {
         case "newest":
-          if (!a.created_at || !b.created_at) return 0;
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return dateB - dateA;
         case "oldest":
-          if (!a.created_at || !b.created_at) return 0;
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          return dateA - dateB;
         case "title":
           return a.title.localeCompare(b.title);
-        case "duration":
-          return a.min_time - b.min_time;
         default:
           return 0;
       }
@@ -153,11 +156,11 @@ const Lessons: React.FC = () => {
   };
 
   const getPublishedCount = () => {
-    return practiceCases.filter(case_ => case_.published).length;
+    return practiceCases.filter(case_ => case_.published && !case_.is_draft).length;
   };
 
   const getDraftCount = () => {
-    return practiceCases.filter(case_ => !case_.published).length;
+    return practiceCases.filter(case_ => case_.is_draft || !case_.published).length;
   };
 
   // Effects
@@ -263,7 +266,6 @@ const Lessons: React.FC = () => {
                     <SelectItem value="newest">Newest</SelectItem>
                     <SelectItem value="oldest">Oldest</SelectItem>
                     <SelectItem value="title">Title A-Z</SelectItem>
-                    <SelectItem value="duration">Duration</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
