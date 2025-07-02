@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-app-name.onrender.com/api/:path*"
+      "destination": "https://chitterchatter-backend.onrender.com/api/:path*"
     },
     { 
       "source": "/(.*)", 
