@@ -3,7 +3,6 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flask_migrate import Migrate
 from app.config import Config
-from app import commands
 from app.routes import register_blueprints
 from app.models import db
 import os
@@ -22,6 +21,8 @@ def create_app():
     # Initialize extensions
     db.init_app(app) 
     jwt.init_app(app)
+
+    from app import commands
     commands.init_app(app) 
     
     CORS(app, resources={r"/api/*": {"origins": [
