@@ -1,6 +1,13 @@
 {
   "buildCommand": "npm run build",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/:path*",
+      "destination": "https://your-app-name.onrender.com/api/:path*"
+    },
+    { 
+      "source": "/(.*)", 
+      "destination": "/index.html" 
+    }
   ]
 }
