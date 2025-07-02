@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 interface TimerProps {
   minTime: number;
@@ -7,7 +7,7 @@ interface TimerProps {
   onMinReached?: () => void;
   onWarning?: () => void;
   onTick?: (elapsed: number) => void;
-  startTimer: boolean; // New prop to control starting the timer
+  startTimer: boolean;
 }
 
 const Timer: React.FC<TimerProps> = ({
@@ -21,42 +21,79 @@ const Timer: React.FC<TimerProps> = ({
 }) => {
   const [elapsed, setElapsed] = useState(0);
   const [warningShown, setWarningShown] = useState(false);
+  const startTimeRef = useRef<number | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Only start the timer if startTimer is true
-    if (!startTimer) return;
+    if (!startTimer) {
+      // Reset when timer is stopped
+      startTimeRef.current = null;
+      setElapsed(0);
+      setWarningShown(false);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
 
-    const intervalId = setInterval(() => {
-      setElapsed((prevElapsed) => {
-        const nextElapsed = prevElapsed + 1;
-        console.log("elapsed:", nextElapsed);
+    // Set start time when timer begins
+    if (startTimeRef.current === null) {
+      startTimeRef.current = Date.now();
+    }
+
+    const updateTimer = () => {
+      if (startTimeRef.current === null) return;
+      
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - startTimeRef.current) / 1000);
+      
+      setElapsed(prevElapsed => {
+        // Only update if the elapsed time has actually changed
+        if (prevElapsed === elapsedSeconds) return prevElapsed;
+        
+        console.log("elapsed:", elapsedSeconds);
 
         // Notify when minimum time is reached
-        if (prevElapsed < minTime && nextElapsed >= minTime) {
+        if (prevElapsed < minTime && elapsedSeconds >= minTime) {
           console.log("Timer: minimum time reached");
           onMinReached && onMinReached();
         }
 
         // Show warning if only 30 seconds remain
-        if (!warningShown && maxTime - nextElapsed <= 30) {
+        if (!warningShown && maxTime - elapsedSeconds <= 30) {
           console.log("Timer: warning! Only 30 seconds remain.");
           onWarning && onWarning();
           setWarningShown(true);
         }
 
         // When maxTime is reached, call onTimeUp and stop the timer
-        if (nextElapsed >= maxTime) {
+        if (elapsedSeconds >= maxTime) {
           console.log("Timer: max time reached");
           onTimeUp();
-          clearInterval(intervalId);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
           return maxTime;
         }
 
-        return nextElapsed;
+        return elapsedSeconds;
       });
-    }, 1000);
+    };
 
-    return () => clearInterval(intervalId);
+    // Update immediately
+    updateTimer();
+
+    // Set up interval
+    intervalRef.current = setInterval(updateTimer, 1000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [startTimer, minTime, maxTime, onMinReached, onWarning, onTimeUp, warningShown]);
 
   // Separate effect to notify parent after elapsed state updates

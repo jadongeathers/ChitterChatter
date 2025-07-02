@@ -17,21 +17,18 @@ def submit_feedback():
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        # Validate feedback content
         if 'feedback' not in data or not data['feedback'].strip():
             return jsonify({"error": "Feedback content is required"}), 400
-            
-        # Create new feedback entry
+
         new_feedback = SystemFeedback(
-            user_id=user_id,
-            content=data['feedback'],
+            user_id=user.id,
+            content=data['feedback'].strip(),
             submitted_at=datetime.now(timezone.utc)
         )
-        
+
         db.session.add(new_feedback)
         db.session.commit()
 
-        # Log the feedback submission
         current_app.logger.info(f"Feedback submitted by user {user_id}: {data['feedback'][:50]}...")
 
         return jsonify({
@@ -56,31 +53,27 @@ def get_feedback():
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        # Only instructors or master users can view all feedback
         if not user.is_master and user.is_student:
             return jsonify({"error": "Unauthorized access"}), 403
 
-        # Fetch all feedback with user information
-        feedback_list = []
-        
-        # Join with User to get the submitter's information
         feedback_entries = (
             db.session.query(SystemFeedback, User)
             .join(User, SystemFeedback.user_id == User.id)
             .order_by(SystemFeedback.submitted_at.desc())
             .all()
         )
-        
-        for feedback, user in feedback_entries:
+
+        feedback_list = []
+        for feedback, submitter in feedback_entries:
             feedback_list.append({
                 "id": feedback.id,
                 "content": feedback.content,
                 "submitted_at": feedback.submitted_at.isoformat(),
                 "user": {
-                    "id": user.id,
-                    "email": user.email,
-                    "name": f"{user.first_name} {user.last_name}",
-                    "is_student": user.is_student
+                    "id": submitter.id,
+                    "email": submitter.email,
+                    "name": f"{submitter.first_name} {submitter.last_name}",
+                    "is_student": submitter.is_student
                 }
             })
 

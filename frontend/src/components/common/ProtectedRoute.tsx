@@ -1,47 +1,43 @@
-// frontend/src/components/common/ProtectedRoute.tsx
-import React, { useEffect, useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
-import { fetchWithAuth } from '@/utils/api';
+// Define a type for user roles to be used within this component
+type UserRole = "student" | "instructor" | "master";
 
-const ProtectedRoute = () => {
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+// Define the props that this component will accept
+interface ProtectedRouteProps {
+  allowedRoles: UserRole[];
+}
 
-  useEffect(() => {
-    const verifyToken = async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        setAuthenticated(false);
-        return;
-      }
+const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
+  const { role: userRole, isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
-      try {
-        // Optionally, verify the token by calling a protected endpoint
-        const response = await fetchWithAuth('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (response.ok) {
-          setAuthenticated(true);
-        } else {
-          setAuthenticated(false);
-        }
-      } catch (err) {
-        setAuthenticated(false);
-      }
-    };
-
-    verifyToken();
-  }, []);
-
-  // While verifying, you might want to show a loading state.
-  if (authenticated === null) {
-    return null;
+  // 1. While AuthContext is figuring out the user's status, render nothing.
+  // This prevents the page from flickering or showing content prematurely.
+  if (isLoading) {
+    return null; 
   }
 
-  if (!authenticated) {
-    return <Navigate to="/login" replace />;
+  // 2. If the user is definitively not authenticated, redirect to the login page.
+  // We pass the user's intended destination (`location`) in the state.
+  // After a successful login, you can redirect them back to this location.
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // 3. If the user is authenticated, check their role.
+  // If their role is NOT in the list of allowed roles for this route, redirect them.
+  if (userRole && !allowedRoles.includes(userRole)) {
+    // A user-friendly approach is to send them to their own dashboard
+    // instead of a harsh "Access Denied" page.
+    const defaultDashboardPath = `/${userRole}/dashboard`;
+    return <Navigate to={defaultDashboardPath} replace />;
+  }
+
+  // 4. If all checks pass, render the child component.
+  // The <Outlet /> is a placeholder provided by react-router-dom
+  // that renders the matched nested route.
   return <Outlet />;
 };
 

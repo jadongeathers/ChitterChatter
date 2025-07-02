@@ -17,17 +17,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Home, MessageCircle, BarChart2, Settings, Users, FileText, LogOut, Check } from "lucide-react";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
-import { fetchWithAuth } from "@/utils/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HeaderProps {
   currentRole: "student" | "instructor" | "master";
   userName: string;
   profilePicture: string;
-  onProfilePictureChange?: (newPicture: string) => void;
+  onProfilePictureChange: (newPictureFile: string) => Promise<void>;
 }
 
 const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange }: HeaderProps) => {
   const navigate = useNavigate();
+  const { logout } = useAuth(); // Get the logout function from our context
+
   const [isUpdating, setIsUpdating] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -42,65 +44,40 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
     { name: "Plum", file: "plum.png" },
   ];
 
+  // This is the corrected logout handler
   const handleLogout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("user_role");
-    localStorage.removeItem("user");
+    // 1. Call the context's logout function to clear global state and localStorage
+    logout();
+    
+    // 2. Navigate to the landing page. This will now work reliably.
     navigate("/");
   };
 
-  const handleProfilePictureChange = async (pictureFile: string) => {
+  // This handler now calls the function passed down from Layout,
+  // which is responsible for the API call and telling the context to refetch.
+  const handleProfilePictureSelect = async (pictureFile: string) => {
     if (isUpdating) return;
     
+    setIsUpdating(true);
+    setStatusMessage(null);
     try {
-      setIsUpdating(true);
-      setStatusMessage(null);
+      await onProfilePictureChange(pictureFile);
       
-      const response = await fetchWithAuth("/api/auth/update-profile-picture", {
-        method: "POST",
-        body: JSON.stringify({ profile_picture: pictureFile }),
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to update profile picture");
-      }
-      
-      const data = await response.json();
-      
-      // Update local storage user data with new profile picture
-      const userData = JSON.parse(localStorage.getItem("user") || "{}");
-      userData.profile_picture = pictureFile;
-      userData.profile_picture_url = data.profile_picture_url;
-      localStorage.setItem("user", JSON.stringify(userData));
-      
-      // Call the callback if provided
-      if (onProfilePictureChange) {
-        onProfilePictureChange(pictureFile);
-      }
-      
-      setStatusMessage({
-        type: "success",
-        message: "Profile picture updated",
-      });
-      
-      // Clear success message after 3 seconds
+      setStatusMessage({ type: "success", message: "Picture updated!" });
       setTimeout(() => setStatusMessage(null), 3000);
     } catch (error) {
-      console.error("Error updating profile picture:", error);
-      setStatusMessage({
-        type: "error",
-        message: "Failed to update profile picture",
-      });
+      console.error("Failed to update profile picture from header:", error);
+      setStatusMessage({ type: "error", message: "Update failed" });
     } finally {
       setIsUpdating(false);
     }
   };
 
   const studentMenuItems = [
-    { icon: Home, label: "Dashboard", path: "/dashboard" },
-    { icon: MessageCircle, label: "Practice", path: "/practice" },
-    { icon: BarChart2, label: "Progress", path: "/progress" },
-    { icon: Settings, label: "Settings", path: "/settings" },
+    { icon: Home, label: "Dashboard", path: "/student/dashboard" },
+    { icon: MessageCircle, label: "Practice", path: "/student/practice" },
+    { icon: BarChart2, label: "Progress", path: "/student/progress" },
+    { icon: Settings, label: "Account Settings", path: "/student/settings" },
     { icon: QuestionMarkCircledIcon, label: "Help & Feedback", path: "/feedback-help" },
   ];
 
@@ -109,26 +86,24 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
     { icon: FileText, label: "Lessons", path: "/instructor/lessons" },
     { icon: Users, label: "Students", path: "/instructor/students" },
     { icon: BarChart2, label: "Analytics", path: "/instructor/analytics" },
-    { icon: Settings, label: "Settings", path: "/instructor/settings" },
+    { icon: Settings, label: "Account Settings", path: "/instructor/settings" },
     { icon: QuestionMarkCircledIcon, label: "Help & Feedback", path: "/instructor/feedback-help" },
   ];
 
   const masterMenuItems = [
-    { icon: Home, label: "I Do Nothing", path: "/master/dashboard" },
+    { icon: Home, label: "Dashboard", path: "/master/dashboard" },
+    { icon: FileText, label: "Classes", path: "/master/classes" },
   ];
 
   const menuItems = currentRole === "master" ? masterMenuItems : currentRole === "student" ? studentMenuItems : instructorMenuItems;
-
-  // Parse the profilePicture URL to get just the filename
   const currentPicFileName = profilePicture.split("/").pop() || "blueberry.png";
 
   return (
     <header className="fixed top-0 left-0 right-0 h-16 flex items-center bg-white border-b border-border px-4 z-20">
       <div className="flex justify-end items-center w-full gap-4">
-        {/* Status Message (only shown when needed) */}
         {statusMessage && (
           <div
-            className={`px-3 py-1 rounded-md text-sm ${
+            className={`px-3 py-1 rounded-md text-sm transition-opacity duration-300 ${
               statusMessage.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
             }`}
           >
@@ -136,7 +111,6 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
           </div>
         )}
 
-        {/* Dropdown Menu */}
         <Select onValueChange={(path) => navigate(path)}>
           <SelectTrigger className="w-48 border rounded-md px-3 py-2 text-sm">
             <SelectValue placeholder="Menu" />
@@ -153,7 +127,6 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
           </SelectContent>
         </Select>
 
-        {/* Logout Button */}
         <button
           onClick={handleLogout}
           className="flex items-center gap-2 text-sm px-3 py-2 rounded-md border hover:bg-gray-100"
@@ -162,7 +135,6 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
           <span>Logout</span>
         </button>
 
-        {/* User Profile Section with Dropdown for Profile Picture Selection */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 px-3 py-1 rounded-md border bg-white hover:bg-gray-100">
@@ -182,15 +154,15 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
                 <DropdownMenuItem
                   key={pic.file}
                   className="p-2 flex justify-center items-center h-14 w-14 hover:bg-gray-100 rounded-md cursor-pointer"
-                  onClick={() => handleProfilePictureChange(pic.file)}
+                  onClick={() => handleProfilePictureSelect(pic.file)}
+                  disabled={isUpdating}
                 >
                   <div className="relative">
                     <img
                       src={`/images/profile-icons/${pic.file}`}
                       alt={pic.name}
-                      title={pic.name} /* Show name on hover instead */
+                      title={pic.name}
                       className="h-12 w-12 rounded-full object-cover border border-gray-200 hover:scale-110 transition-transform"
-                      style={{ objectFit: "cover", objectPosition: "center" }}
                     />
                     {currentPicFileName === pic.file && (
                       <div className="absolute -top-1 -right-1 bg-primary text-white rounded-full p-0.5">

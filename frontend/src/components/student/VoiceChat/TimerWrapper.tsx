@@ -7,12 +7,20 @@ interface TimerWrapperProps {
   maxTime: number;
   onTimeUp: () => void;
   onTick?: (elapsed: number) => void;
-  startTimer: boolean; // New prop
+  startTimer: boolean;
+  isEndingConversation?: boolean; // Add this prop
 }
 
-const TimerWrapper: React.FC<TimerWrapperProps> = ({ minTime, maxTime, onTimeUp, onTick, startTimer }) => {
+const TimerWrapper: React.FC<TimerWrapperProps> = ({ 
+  minTime, 
+  maxTime, 
+  onTimeUp, 
+  onTick, 
+  startTimer, 
+  isEndingConversation = false 
+}) => {
   return (
-    <div className="absolute top-4 right-4 z-50">
+    <div className={`absolute top-4 right-4 ${isEndingConversation ? 'z-40' : 'z-50'}`}>
       <div className="w-30 h-16 bg-white rounded flex items-center justify-between px-4">
         <Clock className="w-6 h-6 mr-2 text-gray-600" />
         <div className="text-lg font-semibold text-gray-700">
@@ -20,8 +28,8 @@ const TimerWrapper: React.FC<TimerWrapperProps> = ({ minTime, maxTime, onTimeUp,
             minTime={minTime} 
             maxTime={maxTime} 
             onTimeUp={onTimeUp} 
-            onTick={onTick}  // Pass the onTick callback
-            startTimer={startTimer} // Pass the startTimer flag
+            onTick={onTick}
+            startTimer={startTimer}
           />
         </div>
       </div>

@@ -1,13 +1,16 @@
 from flask import Blueprint, request, jsonify, redirect
 from datetime import datetime, timezone
-from app.models import db, User
+from . import db
+from .user import User
 import logging
 import json
 
 logger = logging.getLogger(__name__)
 
 class Survey(db.Model):
-    """Model to track surveys and their responses."""
+    """
+    Model to track surveys and their responses.
+    """
     __tablename__ = "surveys"
 
     id = db.Column(db.Integer, primary_key=True)

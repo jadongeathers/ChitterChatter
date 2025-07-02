@@ -3,10 +3,14 @@ from sqlalchemy.orm import relationship
 from app.models import db
 
 class Conversation(db.Model):
+    """
+    Stores metadata for each practice session conversation.
+    """
+
     __tablename__ = "conversations"
 
     id = db.Column(db.Integer, primary_key=True, index=True)
-    student_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     practice_case_id = db.Column(db.Integer, db.ForeignKey("practice_cases.id"))
     start_time = db.Column(db.DateTime(timezone=True), default=datetime.now(timezone.utc))
     end_time = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -19,17 +23,18 @@ class Conversation(db.Model):
 
     # Relationships
     practice_case = db.relationship("PracticeCase", back_populates="conversations")
-    student = db.relationship("User", back_populates="conversations") 
+    user = db.relationship("User", back_populates="conversations") 
     messages = db.relationship("Message", back_populates="conversation", order_by="Message.timestamp")
 
     def __repr__(self):
-        return f"<Conversation {self.id} - Student {self.student_id}>"
+        return f"<Conversation {self.id} - User {self.user_id}>"
 
     def add_message(self, role: str, content: str) -> "Message":
         """Adds a message to the conversation."""
         from .message import Message
         message = Message(
             conversation_id=self.id,
+            user_id=self.user_id,
             role=role,
             content=content
         )
@@ -44,7 +49,7 @@ class Conversation(db.Model):
         """Returns a dictionary representation of the conversation."""
         return {
             "id": self.id,
-            "student_id": self.student_id,  # ✅ Keep student_id reference
+            "user_id": self.user_id,  
             "practice_case_id": self.practice_case_id,
             "start_time": self.start_time.isoformat(),
             "end_time": self.end_time.isoformat() if self.end_time else None,

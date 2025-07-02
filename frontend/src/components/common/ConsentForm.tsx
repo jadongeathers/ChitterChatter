@@ -88,13 +88,12 @@ const ConsentForm: React.FC<ConsentFormProps> = ({
             We are envisioning the future of AI-enhanced language learning. By using ChitterChatter, you're helping contribute to the science of language learning!
           </p>
           <p className="mb-4">
-            If you participate, you will:
+            ChitterChatter is a research tool. If you use it, you will:
           </p>
           <ul className="list-disc pl-5 mb-4 space-y-1">
             <li>Get to work on your language speaking and listening skills</li>
-            <li>Complete a three question pre-study survey</li>
-            <li>Complete a short post-study survey</li>
-            <li>Optionally participate in an interview (30 minutes)</li>
+            <li>Advance our understanding of AI pedagogy</li>
+            <li>Potentially be contacted by our research team</li>
           </ul>
           <p className="mb-4">
             All data collected will be kept confidential and used only for research purposes.
@@ -108,16 +107,15 @@ const ConsentForm: React.FC<ConsentFormProps> = ({
             By using ChitterChatter, you are consenting to participate in a research study to understand how AI-powered tools can enhance language learning.
           </p>
           <p className="mb-4">
-            If you participate, you will:
+            ChitterChatter is a research tool. If you use it, you will:
           </p>
           <ul className="list-disc pl-5 mb-4 space-y-1">
-            <li>Complete a short pre-study survey</li>
-            <li>Provide lesson plans</li>
-            <li>Complete a short post-study survey</li>
-            <li>Participate in an interview (30 minutes)</li>
+            <li>Get the chance to design novel speaking practice activities</li>
+            <li>Advance our understanding of AI pedagogy</li>
+            <li>Potentially be contacted by our research team</li>
           </ul>
           <p className="mb-4">
-            Your participation is voluntary, and all data collected will be kept confidential and used only for research purposes.
+            And all data collected will be kept confidential and used only for research purposes.
           </p>
         </>
       );

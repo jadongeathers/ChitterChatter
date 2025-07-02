@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -17,154 +17,60 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, HelpCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
-type UserRole = "student" | "instructor" | "master";
+// The LayoutProps interface is removed as this component no longer accepts props.
+// It gets everything it needs from the useAuth() context hook.
 
-interface LayoutProps {
-  currentRole: UserRole;
-}
-
-const Layout: React.FC<LayoutProps> = ({ currentRole }) => {
+const Layout: React.FC = () => {
+  // Get all user data and functionality from the central AuthContext.
+  const { role, user, refetchUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [userName, setUserName] = useState<string>("Loading...");
-  const [profilePicture, setProfilePicture] = useState<string | null>(null);
-  const [_userId, setUserId] = useState<number | null>(null);
-  const [_isLoading, setIsLoading] = useState<boolean>(true);
-  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
-  
-  // Feedback form state
+
+  // Local state for the feedback dialog is fine, as it's specific to this component.
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState<boolean | null>(null);
 
-  // Hide sidebar on login/register pages
+  // This logic to hide UI elements on certain pages is correct.
   const hideSidebar = location.pathname === "/login" || location.pathname === "/register";
-  // Hide feedback button on the feedback/help page
   const hideFeedbackButton = location.pathname === "/feedback-help";
 
-  // Try to get profile picture from localStorage on component mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        if (userData.profile_picture_url) {
-          setProfilePicture(userData.profile_picture_url);
-        } else if (userData.profile_picture) {
-          setProfilePicture(`/images/profile-icons/${userData.profile_picture}`);
-        }
-        
-        if (userData.first_name && userData.last_name) {
-          setUserName(`${userData.first_name} ${userData.last_name}`);
-        }
-      } catch (e) {
-        console.error("Error parsing stored user data:", e);
-      }
-    }
-  }, []);
+  // This blocking check is REMOVED. It was the cause of the blank screen issue.
+  // The ProtectedRoute component now handles redirects for unauthenticated users.
+  // if (!user || !role) {
+  //   return null;
+  // }
 
-  const fetchUserData = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetchWithAuth("/api/auth/me");
-
-      if (!response.ok) throw new Error("Failed to fetch user");
-
-      const data = await response.json();
-      setUserId(data.id);
-      
-      if (data.first_name && data.last_name) {
-        setUserName(`${data.first_name} ${data.last_name}`);
-      } else {
-        setUserName("User");
-      }
-
-      // Set profile picture if available
-      if (data.profile_picture_url) {
-        setProfilePicture(data.profile_picture_url);
-      } else if (data.profile_picture) {
-        setProfilePicture(`/images/profile-icons/${data.profile_picture}`);
-      } else {
-        setProfilePicture("/images/profile-icons/blueberry.png");
-      }
-      
-      // Store user data in localStorage
-      localStorage.setItem("user", JSON.stringify(data));
-    } catch (error) {
-      console.error("Error fetching user info:", error);
-      setUserName("Guest");
-      setProfilePicture("/images/profile-icons/blueberry.png");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch data from API
-  useEffect(() => {
-    fetchUserData();
-  }, [refreshTrigger]);
-
-  // Handle profile picture updates
   const handleProfilePictureChange = async (newPicture: string) => {
     try {
-      // Update UI immediately
-      setProfilePicture(`/images/profile-icons/${newPicture}`);
-      
-      const response = await fetchWithAuth("/api/auth/update-profile-picture", {
+      await fetchWithAuth("/api/auth/update-profile-picture", {
         method: "POST",
         body: JSON.stringify({ profile_picture: newPicture }),
       });
-      
-      if (!response.ok) {
-        throw new Error("Failed to update profile picture");
+      // After updating, tell the AuthContext to refetch the user data globally.
+      if (refetchUser) {
+        await refetchUser();
       }
-      
-      const data = await response.json();
-      
-      // Update localStorage
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          const userData = JSON.parse(storedUser);
-          userData.profile_picture = newPicture;
-          userData.profile_picture_url = `/images/profile-icons/${newPicture}`;
-          localStorage.setItem("user", JSON.stringify(userData));
-        } catch (e) {
-          console.error("Error updating stored user data:", e);
-        }
-      }
-      
-      // Force a refresh of user data from the server (if needed)
-      setRefreshTrigger(prev => prev + 1);
-      
     } catch (error) {
       console.error("Error updating profile picture:", error);
-      // Revert to previous picture if there was an error
-      fetchUserData();
     }
   };
 
-  // Handle feedback submission
   const handleSubmitFeedback = async () => {
     if (!feedback.trim()) return;
     setIsSubmitting(true);
     setFeedbackSuccess(null);
-
     try {
-      const response = await fetchWithAuth("/api/system/feedback", {
+      await fetchWithAuth("/api/system/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ feedback }),
       });
-
-      if (!response.ok) throw new Error("Failed to submit feedback");
-      
       setFeedbackSuccess(true);
       setFeedback("");
-      
-      // Close the dialog after a short delay
       setTimeout(() => {
         setFeedbackOpen(false);
         setFeedbackSuccess(null);
@@ -177,7 +83,6 @@ const Layout: React.FC<LayoutProps> = ({ currentRole }) => {
     }
   };
 
-  // Handle navigating to full help page
   const handleGoToHelpPage = () => {
     navigate("/feedback-help");
     setFeedbackOpen(false);
@@ -186,20 +91,20 @@ const Layout: React.FC<LayoutProps> = ({ currentRole }) => {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
-        {!hideSidebar && (
+        {/* Conditionally render sidebar only if the role is available */}
+        {role && !hideSidebar && (
           <UpdatedSidebar 
-            currentRole={currentRole} 
             className="w-64 shrink-0 z-40" 
           />
         )}
 
         <div className="flex flex-col flex-1">
-          {/* Only render Header when profilePicture has been determined */}
-          {profilePicture && (
+          {/* Conditionally render header only if all user data is available */}
+          {user && role && (
             <Header 
-              currentRole={currentRole} 
-              userName={userName} 
-              profilePicture={profilePicture}
+              currentRole={role} 
+              userName={`${user.first_name} ${user.last_name}`}
+              profilePicture={user.profile_picture_url || `/images/profile-icons/${user.profile_picture || 'blueberry.png'}`}
               onProfilePictureChange={handleProfilePictureChange}
             />
           )}
@@ -216,7 +121,6 @@ const Layout: React.FC<LayoutProps> = ({ currentRole }) => {
             </AnimatePresence>
           </main>
           
-          {/* Floating Feedback Button */}
           {!hideFeedbackButton && (
             <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
               <DialogTrigger asChild>
@@ -234,6 +138,7 @@ const Layout: React.FC<LayoutProps> = ({ currentRole }) => {
                   <DialogTitle>Help & Feedback</DialogTitle>
                   <DialogDescription>
                     Share your thoughts or report an issue with the system.
+                    You may also contact us directly via email at jag569@cornell.edu.
                   </DialogDescription>
                 </DialogHeader>
                 

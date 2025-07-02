@@ -2,7 +2,7 @@ import os
 import requests
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from flask import Blueprint, jsonify, request, current_app, send_file
+from flask import Blueprint, Response, jsonify, request, current_app, send_file
 from app.models import User, PracticeCase, Conversation, Message, db
 from app.services.voice_service import VoiceService
 from pathlib import Path
@@ -17,100 +17,29 @@ voice_service = VoiceService()
 
 @chatbot.route("/session", methods=["POST"])
 def create_session():
-    """
-    Create a new realtime session with OpenAI using a practice case determined
-    by the user's institution, class_name, and the lesson.
-    """
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "Missing JSON payload"}), 400
-
         user_id = data.get("user_id")
         practice_case_id = data.get("practice_case_id")
 
         if not user_id:
             return jsonify({"error": "Missing user_id"}), 400
 
-        # Retrieve user
         user = db.session.get(User, user_id)
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        # Fetch practice case by class_name
-        practice_case = PracticeCase.query.filter_by(
-            class_name=user.class_name, id=practice_case_id
-        ).first()
-
+        practice_case = db.session.get(PracticeCase, practice_case_id)
         if not practice_case:
-            return jsonify({"error": "Practice case not found for class"}), 404
+            return jsonify({"error": "Practice case not found"}), 404
 
-        # Send system prompt directly from the database
         prompt_text = practice_case.system_prompt
-
-        # Create session with OpenAI API
         session_data = voice_service.create_session(prompt_text, practice_case_id=practice_case_id)
         return jsonify(session_data)
 
     except Exception as e:
         current_app.logger.error(f"Error creating session: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
-
-@chatbot.route("/conversation/start", methods=["POST"])
-def start_conversation():
-    """
-    Start a new conversation session.
-    """
-    try:
-        data = request.json
-        user_id = data.get("user_id")
-        practice_case_id = data.get("practice_case_id")
-
-        if not user_id:
-            return jsonify({"error": "Missing user_id"}), 400
-        if not practice_case_id:
-            return jsonify({"error": "Missing practice_case_id"}), 400
-
-        # Retrieve the user
-        user = db.session.get(User, user_id)
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-
-        # Fetch practice case by class_name
-        practice_case = PracticeCase.query.filter_by(
-            class_name=user.class_name, id=practice_case_id
-        ).first()
-
-        if not practice_case:
-            return jsonify({"error": "Practice case not found for class"}), 404
-
-        # Retrieve prompt from the database instead of reading from files
-        prompt_text = practice_case.system_prompt
-
-        # Create a new conversation
-        conversation = Conversation(
-            user_id=user_id,
-            practice_case_id=practice_case.id,
-            start_time=datetime.now(timezone.utc),
-            language=user.target_language or "en",
-        )
-
-        db.session.add(conversation)
-        db.session.commit()
-
-        return jsonify(
-            {
-                "conversation_id": conversation.id,
-                "start_time": conversation.start_time.isoformat(),
-                "max_time": practice_case.max_time,
-            }
-        )
-
-    except Exception as e:
-        current_app.logger.error(f"Error starting conversation: {str(e)}")
-        db.session.rollback()
-        return jsonify({"error": "Failed to start conversation"}), 500
 
 
 @chatbot.route("/realtime", methods=["POST"])
@@ -133,3 +62,61 @@ def proxy_openai_realtime():
     except Exception as e:
         current_app.logger.error(f"Error in realtime proxy: {str(e)}")
         return jsonify({"error": str(e)}), 500
+    
+    
+@chatbot.route("/voice/preview", methods=["POST"])
+def preview_voice():
+    """
+    Generate a voice preview using the application's configured voice service.
+    """
+    try:
+        data = request.get_json()
+        voice_id = data.get("voice", "aura-asteria-en") # Use a valid default voice
+        sample_text = data.get("text", "Hello! I'm here to help you practice your conversation skills.")
+        
+        # The `voice_service` now handles the API call
+        audio_content = voice_service.generate_preview(voice_id, sample_text)
+        
+        if not audio_content:
+            return jsonify({"error": "Failed to generate voice preview from service"}), 502
+
+        # Return the audio file directly
+        return Response(
+            audio_content,
+            mimetype="audio/mpeg",
+            headers={
+                "Content-Disposition": "inline; filename=voice_preview.mp3",
+                "Cache-Control": "no-cache"
+            }
+        )
+        
+    except Exception as e:
+        current_app.logger.error(f"Error generating voice preview: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@chatbot.route("/voice/options", methods=["GET"])
+def get_voice_options():
+    """
+    Get available voice options with descriptions for the frontend.
+    """
+    try:
+        voice_options = [
+            {"id": "alloy", "name": "Alloy", "description": "Neutral, balanced tone"},
+            {"id": "ash", "name": "Ash", "description": "Warm, friendly voice"},
+            {"id": "ballad", "name": "Ballad", "description": "Calm, soothing tone"},
+            {"id": "coral", "name": "Coral", "description": "Bright, energetic voice"},
+            {"id": "echo", "name": "Echo", "description": "Clear, professional tone"},
+            {"id": "sage", "name": "Sage", "description": "Wise, measured voice"},
+            {"id": "shimmer", "name": "Shimmer", "description": "Light, pleasant tone"},
+            {"id": "verse", "name": "Verse", "description": "Expressive, dynamic voice"}
+        ]
+        
+        return jsonify({
+            "voices": voice_options,
+            "default": "verse"
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error getting voice options: {str(e)}")
+        return jsonify({"error": "Failed to get voice options"}), 500

@@ -18,6 +18,57 @@ class VoiceService:
             "Content-Type": "application/json",
         }
 
+    def generate_preview(self, voice_id: str, text: str):
+        """
+        Generates a one-off audio preview using OpenAI's standard TTS API.
+
+        NOTE: This API uses a different set of voices than the Realtime API.
+        Only a subset of voices will work for preview.
+        
+        Args:
+            voice_id (str): The voice to use for the preview.
+            text (str): The sample text to convert to speech.
+        
+        Returns:
+            bytes: The MP3 audio content, or None on failure.
+        """
+        try:
+            # The standard TTS API endpoint is different from the realtime one.
+            tts_url = f"{self.api_base}/audio/speech"
+
+            # The voices for the tts-1 model are:
+            # alloy, echo, fable, onyx, nova, shimmer
+            # The realtime voices (ash, ballad, coral, sage, verse) are NOT supported here.
+            # We log a warning if an unsupported voice is used, as the API call will likely fail.
+            valid_preview_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+            if voice_id not in valid_preview_voices:
+                current_app.logger.warning(
+                    f"Voice preview requested for '{voice_id}', which is not supported by the standard TTS API. "
+                    f"This will likely fail. Supported preview voices are: {', '.join(valid_preview_voices)}"
+                )
+
+            payload = {
+                "model": "gpt-4o-mini-tts",  # Use the standard, fast TTS model
+                "voice": voice_id,
+                "input": text,
+                "response_format": "mp3",
+            }
+            
+            response = requests.post(tts_url, headers=self.headers, json=payload, timeout=20)
+            
+            # Raise an HTTPError for bad responses (e.g., 400 for an invalid voice)
+            response.raise_for_status() 
+            
+            return response.content
+
+        except requests.exceptions.RequestException as e:
+            current_app.logger.error(f"Error calling OpenAI TTS API for preview: {e}")
+            return None
+        except Exception as e:
+            # This will catch the HTTPError from an invalid voice and other issues
+            current_app.logger.error(f"Failed to generate voice preview for voice '{voice_id}': {e}")
+            return None
+
     def create_session(self, prompt_text, practice_case_id=None):
         """
         Create a new realtime conversation session with the provided prompt text.
@@ -27,7 +78,7 @@ class VoiceService:
             practice_case_id (int, optional): The ID of the practice case to use for voice/language settings
         """
         try:
-            # Default values
+            # Default values for realtime session
             voice = "verse"
             language_code = "en"
             

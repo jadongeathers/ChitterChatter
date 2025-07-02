@@ -1,10 +1,12 @@
+// components/student/Dashboard/AbridgedPracticeCases.tsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import PracticeCaseCard from "@/components/student/PracticeCaseCard"; 
 import { Button } from "@/components/ui/button";
-import { BookOpen, ChevronRight, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { BookOpen, ArrowRight, Sparkles, Target, Play, CheckCircle } from "lucide-react";
+import { motion } from "framer-motion";
 
 export interface PracticeCase {
   id: number;
@@ -52,9 +54,15 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
 
   // Select the 3 most relevant cases
   const recentCases = prioritizedCases.slice(0, 3);
+  const completedCases = practiceCases.filter(c => c.completed);
+  const inProgressCases = accessibleCases.filter(c => !c.completed);
 
   const handleStartCase = (id: number) => {
     navigate(`/practice/${id}`);
+  };
+
+  const handleViewAllCases = () => {
+    navigate("/practice");
   };
 
   // Animation variants
@@ -86,79 +94,144 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
       animate="visible"
       variants={containerVariants}
     >
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-blue-100">
-            <BookOpen className="h-5 w-5 text-blue-600" />
+      <Card className="hover:shadow-md transition-shadow">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <BookOpen className="h-6 w-6 text-blue-600 mr-3" />
+              <div>
+                <CardTitle className="text-gray-800">Practice Cases</CardTitle>
+                <CardDescription>
+                  Continue your learning journey with these practice exercises
+                </CardDescription>
+              </div>
+            </div>
+            
+            {accessibleCases.length > 3 && (
+              <Button
+                onClick={handleViewAllCases}
+                variant="outline"
+                size="sm"
+                className="ml-4"
+              >
+                View All
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            )}
           </div>
-          <h2 className="text-xl font-semibold text-gray-800">
-            Practice Your Next Case
-          </h2>
-          {practiceCases.length > 0 && (
-            <Badge className="ml-2 bg-white text-blue-700 hover:bg-white border border-gray-200">
-              {practiceCases.length} {practiceCases.length === 1 ? 'Case' : 'Cases'}
-            </Badge>
-          )}
-        </div>
-        
-        {accessibleCases.length > 3 && (
-          <Button
-            onClick={() => navigate("/practice")}
-            variant="ghost"
-            className="text-blue-500 hover:text-blue-700 p-0 flex items-center gap-1 hover:bg-transparent"
-          >
-            View all cases
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
 
-      {practiceCases.length === 0 ? (
-        <motion.div 
-          variants={itemVariants}
-          className="text-center py-10 bg-gray-50 rounded-lg border border-gray-200"
-        >
-          <div className="text-center text-gray-600 text-lg font-medium mb-2">
-            No practice cases yet
-          </div>
-          <p className="text-gray-500">
-            Your instructor hasn't published any practice cases yet. Check back soon!
-          </p>
-        </motion.div>
-      ) : recentCases.length === 0 ? (
-        <motion.div 
-          variants={itemVariants}
-          className="text-center py-10 bg-gray-50 rounded-lg border border-gray-200"
-        >
-          <div className="text-center text-gray-600 text-lg font-medium mb-2">
-            No accessible cases yet
-          </div>
-          <p className="text-gray-500">
-            There are cases available but none are accessible yet. Check back later!
-          </p>
-        </motion.div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {recentCases.map((practiceCase, index) => (
-            <motion.div key={practiceCase.id} variants={itemVariants}>
-              {practiceCase.accessible_on && 
-               !practiceCase.completed && 
-               new Date(practiceCase.accessible_on).getTime() > Date.now() - 86400000 && (
-                <div className="flex justify-end mb-1">
-                  <Badge className="bg-white text-amber-700 border border-amber-200 flex items-center gap-1 hover:bg-white">
-                    <Sparkles className="h-3 w-3" />
-                    New
-                  </Badge>
-                </div>
-              )}
-              <PracticeCaseCard
-                practiceCase={practiceCase}
-                onStart={handleStartCase}
-              />
+          {/* Quick Stats Row */}
+          {practiceCases.length > 0 && (
+            <div className="flex items-center gap-6 pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-gray-700">
+                  {completedCases.length} completed
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-gray-700">
+                  {inProgressCases.length} in progress
+                </span>
+              </div>
+              <Badge variant="secondary" className="text-xs">
+                {practiceCases.length} total
+              </Badge>
+            </div>
+          )}
+        </CardHeader>
+
+        <CardContent>
+          {practiceCases.length === 0 ? (
+            <motion.div 
+              variants={itemVariants}
+              className="text-center py-12"
+            >
+              <div className="bg-gray-50 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <BookOpen className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">No Practice Cases Yet</h3>
+              <p className="text-gray-500 max-w-sm mx-auto text-sm">
+                Your instructor hasn't published any practice cases yet. Check back soon to start your learning journey!
+              </p>
             </motion.div>
-          ))}
-        </div>
-      )}
+          ) : recentCases.length === 0 ? (
+            <motion.div 
+              variants={itemVariants}
+              className="text-center py-12"
+            >
+              <div className="bg-amber-50 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <BookOpen className="h-8 w-8 text-amber-500" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Cases Coming Soon</h3>
+              <p className="text-gray-500 max-w-sm mx-auto text-sm">
+                There are {practiceCases.length} practice cases available, but none are accessible yet. Check back later!
+              </p>
+            </motion.div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {recentCases.map((practiceCase, index) => (
+                <motion.div key={practiceCase.id} variants={itemVariants} className="relative">
+                  {/* New Badge for recently accessible cases */}
+                  {practiceCase.accessible_on && 
+                   !practiceCase.completed && 
+                   new Date(practiceCase.accessible_on).getTime() > Date.now() - 86400000 && (
+                    <div className="absolute -top-2 -right-2 z-10">
+                      <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-sm flex items-center gap-1 text-xs">
+                        <Sparkles className="h-3 w-3" />
+                        New
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  {/* Completed Badge */}
+                  {practiceCase.completed && (
+                    <div className="absolute -top-2 -right-2 z-10">
+                      <Badge className="bg-green-600 text-white border-0 shadow-sm text-xs">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Completed
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  <PracticeCaseCard
+                    practiceCase={practiceCase}
+                    onStart={handleStartCase}
+                  />
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {/* View More Section */}
+          {accessibleCases.length > 3 && (
+            <motion.div 
+              variants={itemVariants}
+              className="mt-6 pt-4 border-t border-gray-100"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">
+                    {accessibleCases.length - 3} more cases available
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Continue your practice with additional exercises
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleViewAllCases}
+                  variant="outline"
+                  size="sm"
+                >
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View All Cases
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </CardContent>
+      </Card>
     </motion.div>
   );
 };

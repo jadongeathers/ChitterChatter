@@ -1,6 +1,12 @@
-import { useState, useEffect } from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
+
+// Helper & Layout Components
 import Layout from "@/components/common/Layout";
+import ProtectedRoute from "@/components/common/ProtectedRoute";
+import DashboardRedirector from "@/components/common/DashboardRedirector";
+
+// Page Imports
 import StudentDashboard from "@/pages/student/Dashboard";
 import Practice from "@/pages/student/Practice";
 import VoiceChat from "@/components/student/VoiceChat/VoiceChat";
@@ -8,7 +14,6 @@ import InstructorDashboard from "@/pages/instructor/Dashboard";
 import MasterDashboard from "@/pages/master/Dashboard";
 import Login from "@/pages/common/Login";
 import Register from "@/pages/common/Register";
-import ProtectedRoute from "@/components/common/ProtectedRoute";
 import Feedback from "@/pages/student/Feedback";
 import Progress from "@/pages/student/Progress";
 import Settings from "@/pages/student/Settings";
@@ -21,144 +26,125 @@ import ConversationDetailPage from "./pages/student/ConversationDetail";
 import FeedbackHelp from "./pages/student/FeedbackHelp";
 import InstructorFeedbackHelp from "./pages/instructor/FeedbackHelp";
 import InstructorSettings from "./pages/instructor/Settings";
-
-// New Imports for Public Pages
+import ClassesPage from "@/pages/master/ClassesPage";
 import LandingPage from "@/pages/common/LandingPage";
 import ResearchTeam from "@/pages/common/ResearchTeam";
 
-import { fetchWithAuth } from "./utils/api";
+// Context Providers
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ClassProvider } from "@/contexts/ClassContext";
+import { StudentClassProvider } from "@/contexts/StudentClassContext";
 
-// Define the UserRole type to match what Layout expects
+// Define a type for user roles for clarity
 type UserRole = "student" | "instructor" | "master";
 
-// Debug component to help find routing issues
+// A simple 404 Not Found component
 const NoMatch = () => {
   const location = useLocation();
   return (
-    <div style={{ padding: "20px", backgroundColor: "#ffdddd", margin: "20px", borderRadius: "5px" }}>
-      <h2>Error: No Route Matched</h2>
-      <p>Current path: <strong>{location.pathname}</strong></p>
-      <p>This error occurs when React Router can't find a matching route for the current URL.</p>
+    <div style={{ padding: "20px", textAlign: "center", marginTop: "50px" }}>
+      <h2>404 - Page Not Found</h2>
+      <p>No route matched the path: <strong>{location.pathname}</strong></p>
     </div>
   );
 };
 
-function App() {
-  const navigate = useNavigate();
+// The main routing logic component, now much cleaner
+const AppRoutes = () => {
+  const { isAuthenticated, isLoading, role } = useAuth();
   const location = useLocation();
 
-  const [currentRole, setCurrentRole] = useState<UserRole | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
+  // This effect to manage body scroll on specific pages is fine.
   useEffect(() => {
-    // Manage scroll lock for login/register pages
-    if (["/login", "/register"].includes(location.pathname)) {
+    const scrollDisabledPaths = ["/login", "/register"];
+    if (scrollDisabledPaths.includes(location.pathname)) {
       document.body.classList.add("disable-scroll");
     } else {
       document.body.classList.remove("disable-scroll");
     }
-    return () => {
-      document.body.classList.remove("disable-scroll");
-    };
   }, [location.pathname]);
 
-  useEffect(() => {
-    // Define public routes that don't require a user fetch.
-    const publicRoutes = ["/login", "/register", "/research-team"];
-    
-    // If user is on a public route or on the landing page ("/"), skip fetching user data
-    if (publicRoutes.includes(location.pathname) || location.pathname === "/") {
-      setIsLoading(false);
-      return;
-    }
-    
-    const fetchUser = async () => {
-      try {
-        const token = localStorage.getItem("access_token");
-        if (!token) {
-          setIsLoading(false);
-          if (location.pathname !== "/") navigate("/login");
-          return;
-        }
-
-        const response = await fetchWithAuth("/api/auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!response.ok) throw new Error("Failed to fetch user");
-
-        const user = await response.json();
-        setCurrentRole(user.is_master ? "master" : (user.is_student ? "student" : "instructor"));
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching user:", error);
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user_role");
-        setIsLoading(false);
-        if (location.pathname !== "/") navigate("/login");
-      }
-    };
-
-    fetchUser();
-  }, [navigate, location.pathname]);
-
-  if (isLoading) return null;
-
-  // If there's no token and the user is at the root path, render the landing page.
-  const token = localStorage.getItem("access_token");
-  if (!token && location.pathname === "/") {
-    return <LandingPage />;
+  // Wait for the AuthContext to finish its initial check before rendering any routes.
+  if (isLoading) {
+    return null; // Or a global loading spinner
   }
 
   return (
     <Routes>
-      {/* Public Routes */}
-      <Route path="/research-team" element={<ResearchTeam />} />
+      {/* ==================================================================== */}
+      {/* 1. PUBLIC ROUTES - Accessible to everyone, logged in or not.        */}
+      {/* ==================================================================== */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/research-team" element={<ResearchTeam />} />
 
-      {/* Protected Routes */}
-      <Route path="/*" element={<ProtectedRoute />}>
-        <Route element={<Layout currentRole={currentRole as UserRole} />}>
-          <Route index element={
-            currentRole === "master"
-              ? <MasterDashboard />
-              : currentRole === "student"
-                ? <StudentDashboard />
-                : <InstructorDashboard />
-          } />
-          {/* Common Routes */}
-          <Route path="dashboard" element={<StudentDashboard />} />
-          <Route path="practice/*" element={<Practice />} />
-          <Route path="progress" element={<Progress />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="practice/:id" element={<VoiceChat />} />
-          <Route path="feedback/:id" element={<Feedback />} />
-          <Route path="conversations/:id" element={<ConversationDetailPage />} />
-          <Route path="feedback-help" element={<FeedbackHelp />} />
+      {/* The root path '/' has special logic:
+          - If authenticated, redirect to the user's specific dashboard.
+          - If not authenticated, show the public landing page.
+      */}
+      <Route path="/" element={isAuthenticated ? <DashboardRedirector /> : <LandingPage />} />
 
-          {/* Master Routes */}
-          <Route path="master" element={<MasterDashboard />} />
-          <Route path="master/dashboard" element={<MasterDashboard />} />
+      {/* ==================================================================== */}
+      {/* 2. PROTECTED ROUTES - Only accessible to authenticated users.        */}
+      {/* All protected routes are wrapped in the shared <Layout /> component. */}
+      {/* ==================================================================== */}
+      <Route element={<Layout />}>
 
-          {/* Instructor Routes */}
-          <Route path="instructor/dashboard" element={<InstructorDashboard />} />
-          <Route path="instructor/lessons" element={<Lessons />} />
-          <Route path="instructor/review/:caseId" element={<ReviewCase />} />
-          <Route path="instructor/review/new" element={<ReviewCase isNew />} />
-          <Route path="instructor/feedback/:caseId" element={<ReviewFeedback />} />
-          <Route path="instructor/students" element={<Students />} />
-          <Route path="instructor/analytics" element={<Analytics />} />
-          <Route path="instructor/feedback-help" element={<InstructorFeedbackHelp />} />
-          <Route path="instructor/settings" element={<InstructorSettings />} />
-          {/* Debug catch-all route */}
-          <Route path="*" element={<NoMatch />} />
+        {/* --- STUDENT ONLY ROUTES --- */}
+        <Route element={<ProtectedRoute allowedRoles={["student"]} />}>
+          <Route path="/student/dashboard" element={<StudentDashboard />} />
+          <Route path="/student/practice" element={<Practice />} />
+          <Route path="/student/progress" element={<Progress />} />
+          <Route path="/student/settings" element={<Settings />} />
+          <Route path="/student/conversations/:id" element={<ConversationDetailPage />} />
+          <Route path="/student/feedback-help" element={<FeedbackHelp />} />
         </Route>
-      </Route>
 
+        {/* --- INSTRUCTOR ONLY ROUTES --- */}
+        <Route element={<ProtectedRoute allowedRoles={["instructor"]} />}>
+          <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
+          <Route path="/instructor/lessons" element={<Lessons />} />
+          <Route path="/instructor/review/:caseId" element={<ReviewCase />} />
+          <Route path="/instructor/review/new" element={<ReviewCase isNew />} />
+          <Route path="/instructor/feedback/:caseId" element={<ReviewFeedback />} />
+          <Route path="/instructor/students" element={<Students />} />
+          <Route path="/instructor/analytics" element={<Analytics />} />
+          <Route path="/instructor/settings" element={<InstructorSettings />} />
+          <Route path="/instructor/feedback-help" element={<InstructorFeedbackHelp />} />
+        </Route>
+
+        {/* --- MASTER ONLY ROUTES --- */}
+        <Route element={<ProtectedRoute allowedRoles={["master"]} />}>
+          <Route path="/master/dashboard" element={<MasterDashboard />} />
+          <Route path="/master/classes" element={<ClassesPage />} />
+        </Route>
+
+        {/* --- SHARED PROTECTED ROUTES (Accessible by Student & Instructor) --- */}
+        <Route element={<ProtectedRoute allowedRoles={["student", "instructor"]} />}>
+          <Route path="/practice/:id" element={<VoiceChat />} />
+          <Route path="/feedback/:id" element={<Feedback />} />
+        </Route>
+
+      </Route> {/* End of the main Layout wrapper for protected routes */}
+
+      {/* ==================================================================== */}
+      {/* 3. CATCH-ALL ROUTE - Renders if no other route matches.             */}
+      {/* ==================================================================== */}
       <Route path="*" element={<NoMatch />} />
     </Routes>
   );
-}
+};
 
-export default App;
+// Main App component that provides context to all routes.
+// The providers no longer require props to be passed down.
+export default function App() {
+  return (
+    <AuthProvider>
+      <ClassProvider>
+        <StudentClassProvider>
+          <AppRoutes />
+        </StudentClassProvider>
+      </ClassProvider>
+    </AuthProvider>
+  );
+}

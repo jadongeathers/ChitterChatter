@@ -19,6 +19,7 @@ interface ConversationAreaProps {
   onTimerUp: () => void;
   canStop: boolean;
   onTick?: (elapsed: number) => void;
+  isEndingConversation?: boolean;
 }
 
 const ConversationArea: React.FC<ConversationAreaProps> = ({
@@ -34,16 +35,16 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
   timeElapsed,
   onTimerUp,
   canStop,
-  onTick
+  onTick,
+  isEndingConversation
 }) => {
-    console.log("ConversationArea props:", { timerMin, timerMax, timeElapsed, canStop });
-  
+  console.log("ConversationArea props:", { timerMin, timerMax, timeElapsed, canStop });
 
   return (
     <Card className="w-full max-w-2xl p-4 relative">
       <CardHeader className="flex items-center justify-between">
         <CardTitle>Conversation</CardTitle>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col items-end gap-2">
           <div
             className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${
               status === "Connected"
@@ -70,6 +71,7 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
             onTimeUp={onTimerUp} 
             onTick={onTick}
             startTimer={status === "Connected"} // Timer only starts when status is Connected
+            isEndingConversation={isEndingConversation} 
           />
         </div>
       </CardHeader>
@@ -98,6 +100,7 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.5, ease: "easeInOut" }}
+                    className="text-base leading-relaxed"
                   >
                     {currentMessage}
                   </motion.div>

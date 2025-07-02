@@ -6,8 +6,8 @@ const InstructorConsentForm: React.FC = () => {
       <h2 className="text-xl font-semibold text-center">Instructor Consent Form</h2>
       
       <p>
-        We are asking you to participate in a research study titled "Exploring AI-Powered Virtual
-        Practice Partners (VPPs) for Language Learning in University Classrooms". We will
+        We are asking you to participate in a research study on exploring AI-powered virtual
+        practice partners (VPPs) for language learning in classrooms. We will
         describe this study to you and answer any of your questions. This study is being led by
         Jadon Geathers, Department of Information Science at Cornell University. The Faculty
         Advisors for this study are Rene Kizilcec and AJ Alvero, Department of Information
@@ -23,40 +23,6 @@ const InstructorConsentForm: React.FC = () => {
           language proficiency, as well as how students interact with and perceive its usefulness.
           Additionally, instructors will provide insights into the integration of the VPP into their
           teaching practice.
-        </p>
-      </div>
-      
-      <div>
-        <h3 className="text-lg font-semibold">What we will ask you to do</h3>
-        <p>We will ask you to participate in this study by integrating the Virtual Practice Partner (VPP) into your teaching. This will involve:</p>
-        <ol className="list-decimal pl-5 space-y-2">
-          <li>
-            <span className="font-medium">Pre-study survey (10 minutes):</span> You will complete a short survey to share your
-            initial perceptions of VPPs and their potential in language learning.
-          </li>
-          <li>
-            <span className="font-medium">Lesson plan provision (15 minutes):</span> You will provide your lesson plans and
-            curricular objectives to help researchers tailor the VPP to your curriculum.
-          </li>
-          <li>
-            <span className="font-medium">Dashboard monitoring and feedback (~15-30 minutes/week):</span> Over the 4-week
-            study period, you will monitor student engagement with the VPP through an
-            online dashboard and provide feedback on its integration into your teaching.
-          </li>
-          <li>
-            <span className="font-medium">Post-study survey (10 minutes):</span> After 4 weeks, you will complete a short survey
-            to share your thoughts on the VPP, including its usability, effectiveness, and
-            impact on your teaching.
-          </li>
-          <li>
-            <span className="font-medium">Optional interview (30 minutes):</span> You may choose to participate in a one-on-one,
-            private interview to provide detailed feedback about your experience.
-          </li>
-        </ol>
-        <p className="mt-2">
-          Over the course of 4 weeks, participation in this study will require a total time
-          commitment of approximately 1.5 to 3 hours, depending on your level of engagement
-          with dashboard monitoring and your decision to participate in the optional interview.
         </p>
       </div>
       
@@ -81,21 +47,6 @@ const InstructorConsentForm: React.FC = () => {
       </div>
       
       <div>
-        <h3 className="text-lg font-semibold">Incentives for participation</h3>
-        <p>There are no financial incentives for participating in this study.</p>
-      </div>
-      
-      <div>
-        <h3 className="text-lg font-semibold">Audio/Video Recording</h3>
-        <p>
-          Audio recordings will be used during optional one-on-one interviews to capture
-          participants' feedback about their experience with the VPP. These recordings will be
-          transcribed and analyzed for our research. Once transcription is complete and verified,
-          the recordings will be securely deleted within 6 months.
-        </p>
-      </div>
-      
-      <div>
         <h3 className="text-lg font-semibold">Privacy/Confidentiality/Data Security</h3>
         <p>
           Any data collected from surveys, interviews, and the Virtual Practice Partner (VPP) will
@@ -116,8 +67,7 @@ const InstructorConsentForm: React.FC = () => {
           with institutional privacy and data security standards. Only authorized members of the
           research team will have access to identifying information, which will be stored
           separately from research data (e.g., signed consent forms). Sensitive data in an
-          electronic environment will be encrypted during storage and transfer, and all identifying
-          information will be deleted after the study concludes (~6 months).
+          electronic environment will be encrypted during storage and transfer.
         </p>
         <p className="mt-2">
           We will do our best to keep your participation in this research study confidential to the
