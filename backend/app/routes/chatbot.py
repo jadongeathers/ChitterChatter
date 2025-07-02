@@ -67,47 +67,22 @@ def proxy_openai_realtime():
 @chatbot.route("/voice/preview", methods=["POST"])
 def preview_voice():
     """
-    Generate a voice preview using OpenAI's TTS API for instructor voice selection.
+    Generate a voice preview using the application's configured voice service.
     """
     try:
         data = request.get_json()
-        voice_id = data.get("voice", "alloy")
-        sample_text = data.get("text", "Hello! I'm here to help you practice your conversation skills. Let's have a great learning session together.")
+        voice_id = data.get("voice", "aura-asteria-en") # Use a valid default voice
+        sample_text = data.get("text", "Hello! I'm here to help you practice your conversation skills.")
         
-        # Validate voice_id against OpenAI's available voices
-        valid_voices = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"]
-        if voice_id not in valid_voices:
-            return jsonify({"error": f"Invalid voice. Must be one of: {', '.join(valid_voices)}"}), 400
+        # The `voice_service` now handles the API call
+        audio_content = voice_service.generate_preview(voice_id, sample_text)
         
-        # Make request to OpenAI TTS API
-        headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "model": "tts-1",
-            "voice": voice_id,
-            "input": sample_text,
-            "response_format": "mp3"
-        }
-        
-        current_app.logger.info(f"Generating voice preview for voice: {voice_id}")
-        
-        response = requests.post(
-            "https://api.openai.com/v1/audio/speech",
-            headers=headers,
-            json=payload,
-            timeout=30
-        )
-        
-        if not response.ok:
-            current_app.logger.error(f"OpenAI TTS API error: {response.status_code} - {response.text}")
-            return jsonify({"error": "Failed to generate voice preview"}), 500
-        
+        if not audio_content:
+            return jsonify({"error": "Failed to generate voice preview from service"}), 502
+
         # Return the audio file directly
         return Response(
-            response.content,
+            audio_content,
             mimetype="audio/mpeg",
             headers={
                 "Content-Disposition": "inline; filename=voice_preview.mp3",
@@ -115,9 +90,6 @@ def preview_voice():
             }
         )
         
-    except requests.RequestException as e:
-        current_app.logger.error(f"Request error in voice preview: {str(e)}")
-        return jsonify({"error": "Failed to connect to voice service"}), 503
     except Exception as e:
         current_app.logger.error(f"Error generating voice preview: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500

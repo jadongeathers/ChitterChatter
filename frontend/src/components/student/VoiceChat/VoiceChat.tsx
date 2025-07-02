@@ -7,6 +7,7 @@ import StartSessionDialog from "./StartSessionDialog";
 import ConversationArea from "./ConversationArea";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchWithAuth } from "@/utils/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PracticeCase {
   id: number;
@@ -23,6 +24,7 @@ interface PracticeCase {
 const VoiceChat: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
   const [status, setStatus] = useState<string>("Idle");
   const [error, setError] = useState<string | null>(null);
   const [pc, setPc] = useState<RTCPeerConnection | null>(null);
@@ -45,6 +47,65 @@ const VoiceChat: React.FC = () => {
   const conversationIdRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Centralized function to clean up all media resources
+  const cleanupMediaResources = useCallback(() => {
+    console.log("Cleaning up media resources...");
+    
+    // Close peer connection and stop all tracks
+    if (pc) {
+      pc.getSenders().forEach((sender) => {
+        if (sender.track) {
+          sender.track.stop();
+          console.log(`Stopped sender ${sender.track.kind} track:`, sender.track.label);
+        }
+      });
+      pc.getReceivers().forEach((receiver) => {
+        if (receiver.track) {
+          receiver.track.stop();
+          console.log(`Stopped receiver ${receiver.track.kind} track:`, receiver.track.label);
+        }
+      });
+      pc.close();
+      setPc(null);
+    }
+
+    // Stop local stream tracks (microphone/camera)
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log(`Stopped local ${track.kind} track:`, track.label);
+      });
+      setLocalStream(null);
+    }
+
+    // Stop remote stream tracks
+    if (remoteStream) {
+      remoteStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log(`Stopped remote ${track.kind} track:`, track.label);
+      });
+      setRemoteStream(null);
+    }
+  }, [pc, localStream, remoteStream]);
+
+  // Monitor authentication status changes (logout detection)
+  useEffect(() => {
+    if (!isAuthenticated && isSessionStarted) {
+      console.log("User logged out during session, cleaning up media resources");
+      cleanupMediaResources();
+      setIsSessionStarted(false);
+      setStatus("Disconnected");
+    }
+  }, [isAuthenticated, isSessionStarted, cleanupMediaResources]);
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      console.log("Component unmounting, cleaning up media resources");
+      cleanupMediaResources();
+    };
+  }, [cleanupMediaResources]);
+
   // Fetch the user's role
   const fetchUserRole = async () => {
     try {
@@ -65,6 +126,10 @@ const VoiceChat: React.FC = () => {
 
   const handleModalClose = (open: boolean) => {
     if (!open) {
+      // Clean up media resources when modal closes without starting session
+      if (!isSessionStarted) {
+        cleanupMediaResources();
+      }
       if (userRole === "instructor") {
         navigate("/instructor/lessons");
       } else {
@@ -210,6 +275,9 @@ const VoiceChat: React.FC = () => {
     } catch (err) {
       console.error("Session error:", err);
   
+      // Clean up any partially created resources on error
+      cleanupMediaResources();
+  
       // Specific microphone access error handling
       if (err instanceof Error && err.message.includes("Microphone access was denied")) {
         setError("Microphone access not enabled! Please enable microphone access and refresh your browser.");
@@ -228,38 +296,8 @@ const stopSession = async () => {
 
   await new Promise(resolve => setTimeout(resolve, 100)); // Ensure UI updates before API call
 
-  // Close peer connection and stop all tracks
-  if (pc) {
-    pc.getSenders().forEach((sender) => {
-      if (sender.track) {
-        sender.track.stop();
-      }
-    });
-    pc.getReceivers().forEach((receiver) => {
-      if (receiver.track) {
-        receiver.track.stop();
-      }
-    });
-    pc.close();
-    setPc(null);
-  }
-
-  // Stop local stream tracks (microphone/camera)
-  if (localStream) {
-    localStream.getTracks().forEach((track) => {
-      track.stop();
-      console.log(`Stopped ${track.kind} track:`, track.label);
-    });
-    setLocalStream(null);
-  }
-
-  // Stop remote stream tracks
-  if (remoteStream) {
-    remoteStream.getTracks().forEach((track) => {
-      track.stop();
-    });
-    setRemoteStream(null);
-  }
+  // Use centralized cleanup function
+  cleanupMediaResources();
   
   if (conversationIdRef.current) {
     // Begin exit animation for the conversation area
@@ -286,40 +324,10 @@ const stopSession = async () => {
 };
 
 const cancelSession = async () => {
-  // Close peer connection and stop all tracks
-  if (pc) {
-    pc.getSenders().forEach((sender) => {
-      if (sender.track) {
-        sender.track.stop();
-      }
-    });
-    pc.getReceivers().forEach((receiver) => {
-      if (receiver.track) {
-        receiver.track.stop();
-      }
-    });
-    pc.close();
-    setPc(null);
-  }
+  // Use centralized cleanup function
+  cleanupMediaResources();
 
-  // Stop local stream tracks (microphone/camera)
-  if (localStream) {
-    localStream.getTracks().forEach((track) => {
-      track.stop();
-      console.log(`Stopped ${track.kind} track:`, track.label);
-    });
-    setLocalStream(null);
-  }
-
-  // Stop remote stream tracks
-  if (remoteStream) {
-    remoteStream.getTracks().forEach((track) => {
-      track.stop();
-    });
-    setRemoteStream(null);
-  }
-
-  // ✅ Ensure conversationIdRef.current exists before making a request
+  // Ensure conversationIdRef.current exists before making a request
   if (conversationIdRef.current) {
     try {
       const response = await fetchWithAuth(`/api/conversations/conversation/${conversationIdRef.current}/end`, {
@@ -337,7 +345,7 @@ const cancelSession = async () => {
   // Add a small delay to ensure user sees the "Ending conversation" message
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // ✅ Redirect user based on role
+  // Redirect user based on role
   if (userRole === "instructor") {
     navigate("/instructor/lessons");
   } else {

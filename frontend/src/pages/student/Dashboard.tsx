@@ -6,7 +6,7 @@ import AbridgedPracticeCases, { PracticeCase } from "@/components/student/Dashbo
 import LatestAIFeedback from "@/components/student/Dashboard/LatestAIFeedback";
 import RecentConversation, { Message } from "@/components/student/Dashboard/RecentConversation";
 import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   BookOpen, 
   TrendingUp, 
@@ -15,7 +15,8 @@ import {
   Brain,
   Target,
   Zap,
-  MessageSquare
+  MessageSquare,
+  BarChart3
 } from "lucide-react";
 import StudentClassAwareLayout from "@/components/student/StudentClassAwareLayout";
 import { useStudentClass } from "@/contexts/StudentClassContext";
@@ -125,71 +126,68 @@ const StudentDashboard: React.FC = () => {
       description={getPageDescription()}
     >
 
-      {/* Stats Overview */}
+      {/* Quick Stats Section */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="mb-8"
       >
+        <h2 className="text-lg font-semibold mb-4 text-gray-800">Your Progress at a Glance</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-blue-600 p-2 rounded-lg">
-                  <BookOpen className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-blue-900">{studentStats.completedCases}</div>
-                  <div className="text-sm text-blue-700">Cases Completed</div>
-                  <div className="text-xs text-blue-600">of {studentStats.totalCases} available</div>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <BookOpen className="h-8 w-8 text-blue-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Cases Completed</p>
+                  <p className="text-2xl font-bold">{studentStats.completedCases}</p>
+                  <p className="text-xs text-muted-foreground">of {studentStats.totalCases} available</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-green-600 p-2 rounded-lg">
-                  <Target className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-green-900">{getCompletionRate()}%</div>
-                  <div className="text-sm text-green-700">Completion Rate</div>
-                  <div className="text-xs text-green-600">Keep it up!</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-purple-600 p-2 rounded-lg">
-                  <MessageSquare className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-purple-900">{studentStats.totalConversations}</div>
-                  <div className="text-sm text-purple-700">Total Conversations</div>
-                  <div className="text-xs text-purple-600">Practice sessions</div>
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <Target className="h-8 w-8 text-green-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Completion Rate</p>
+                  <p className="text-2xl font-bold">{getCompletionRate()}%</p>
+                  <p className="text-xs text-green-600">
+                    {getCompletionRate() >= 75 ? "Excellent progress!" : 
+                     getCompletionRate() >= 50 ? "Keep it up!" : 
+                     "Just getting started"}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-orange-600 p-2 rounded-lg">
-                  <Clock className="h-5 w-5 text-white" />
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <MessageSquare className="h-8 w-8 text-purple-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Conversations</p>
+                  <p className="text-2xl font-bold">{studentStats.totalConversations}</p>
+                  <p className="text-xs text-muted-foreground">Practice sessions</p>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-orange-900">{formatTime(studentStats.totalTimeSpent)}</div>
-                  <div className="text-sm text-orange-700">Time Practiced</div>
-                  <div className="text-xs text-orange-600">
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <Clock className="h-8 w-8 text-orange-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Time Practiced</p>
+                  <p className="text-2xl font-bold">{formatTime(studentStats.totalTimeSpent)}</p>
+                  <p className="text-xs text-muted-foreground">
                     {studentStats.averageTimePerCase > 0 ? `${studentStats.averageTimePerCase}m avg per case` : 'Total time spent'}
-                  </div>
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -197,73 +195,110 @@ const StudentDashboard: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Main Content - Better Layout */}
-      <div className="space-y-8">
-        
-        {/* Practice Cases - Full Width */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-          <AbridgedPracticeCases practiceCases={practiceCases} />
-        </motion.div>
+      {/* Practice Cases Section */}
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        transition={{ delay: 0.2 }}
+        className="mb-8"
+      >
+        <h2 className="text-lg font-semibold mb-4 text-gray-800">Practice Cases</h2>
+        <AbridgedPracticeCases practiceCases={practiceCases} />
+      </motion.div>
 
-        {/* AI Feedback and Recent Conversation - Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-            <RecentConversation 
-              messages={recentTranscript} 
-              hasRecentConversation={hasRecentConversation}
-            />
-          </motion.div>
-          
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
-            <LatestAIFeedback feedback={recentFeedback} />
-          </motion.div>
+      {/* Recent Activity Section */}
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        transition={{ delay: 0.3 }}
+        className="mb-8"
+      >
+        <h2 className="text-lg font-semibold mb-4 text-gray-800">Recent Activity</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <RecentConversation 
+            messages={recentTranscript} 
+            hasRecentConversation={hasRecentConversation}
+          />
+          <LatestAIFeedback feedback={recentFeedback} />
         </div>
+      </motion.div>
 
-        {/* Progress Card - Full Width */}
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
-          transition={{ delay: 0.7 }}
-        >
-          <Card className="shadow-lg border border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <TrendingUp className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-lg font-semibold text-indigo-800">Your Progress</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-indigo-900 mb-1">
-                    {getCompletionRate()}%
-                  </div>
-                  <p className="text-sm text-indigo-600">
-                    {studentStats.completedCases} of {studentStats.totalCases} cases completed
-                  </p>
+      {/* Progress Overview Section */}
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        transition={{ delay: 0.4 }}
+      >
+        <h2 className="text-lg font-semibold mb-4 text-gray-800">Progress Overview</h2>
+        <Card className="border-blue-200 bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
+          <CardHeader>
+            <CardTitle className="flex items-center text-blue-800">
+              <BarChart3 className="h-5 w-5 mr-2" />
+              Learning Journey
+            </CardTitle>
+            <CardDescription>
+              Track your overall progress and achievements
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Progress Bar */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-700">Overall Completion</span>
+                  <span className="text-sm font-bold text-blue-700">{getCompletionRate()}%</span>
                 </div>
-                
-                <div className="w-full bg-indigo-200 rounded-full h-3">
+                <div className="w-full bg-blue-100 rounded-full h-3">
                   <div 
-                    className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
+                    className="bg-blue-600 h-3 rounded-full transition-all duration-700 ease-out"
                     style={{ width: `${getCompletionRate()}%` }}
                   ></div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4 text-center text-sm">
-                  <div>
-                    <div className="font-semibold text-indigo-900">{studentStats.totalConversations}</div>
-                    <div className="text-indigo-600">Conversations</div>
+                <p className="text-xs text-gray-600 mt-1">
+                  {studentStats.completedCases} of {studentStats.totalCases} cases completed
+                </p>
+              </div>
+
+              {/* Key Metrics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="text-2xl font-bold text-blue-700">{studentStats.totalConversations}</div>
+                  <div className="text-xs text-gray-600">Total Conversations</div>
+                </div>
+                <div className="text-center p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="text-2xl font-bold text-blue-700">{studentStats.averageTimePerCase}m</div>
+                  <div className="text-xs text-gray-600">Avg Time per Case</div>
+                </div>
+                <div className="text-center p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="text-2xl font-bold text-blue-700">{formatTime(studentStats.totalTimeSpent)}</div>
+                  <div className="text-xs text-gray-600">Total Practice Time</div>
+                </div>
+                <div className="text-center p-3 bg-white rounded-lg border border-blue-100">
+                  <div className="text-2xl font-bold text-blue-700">
+                    {studentStats.totalCases - studentStats.completedCases}
                   </div>
-                  <div>
-                    <div className="font-semibold text-indigo-900">{studentStats.averageTimePerCase}m</div>
-                    <div className="text-indigo-600">Avg Time</div>
-                  </div>
+                  <div className="text-xs text-gray-600">Cases Remaining</div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+
+              {/* Motivational Message */}
+              {getCompletionRate() > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                  <p className="text-sm text-blue-800">
+                    {getCompletionRate() === 100 ? 
+                      "🎉 Congratulations! You've completed all available cases!" :
+                      getCompletionRate() >= 75 ? 
+                      "🌟 You're doing amazing! Keep up the excellent work!" :
+                      getCompletionRate() >= 50 ?
+                      "💪 Great progress! You're halfway there!" :
+                      "🚀 You're off to a great start! Keep practicing!"}
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </StudentClassAwareLayout>
   );
 };

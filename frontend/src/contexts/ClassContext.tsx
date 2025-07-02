@@ -40,11 +40,8 @@ interface ClassContextType {
 
 const ClassContext = createContext<ClassContextType | undefined>(undefined);
 
-export const ClassProvider: React.FC<{
-  children: ReactNode;
-  userRole: string;
-}> = ({ children, userRole }) => {
-  const { isAuthenticated } = useAuth(); // Use auth context
+export const ClassProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { role, isAuthenticated, isLoading: authIsLoading } = useAuth();
   const [availableClasses, setAvailableClasses] = useState<InstructorClass[]>([]);
   const [selectedClass, setSelectedClass] = useState<InstructorClass | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,9 +49,10 @@ export const ClassProvider: React.FC<{
   const [hasInitialized, setHasInitialized] = useState(false);
 
   useEffect(() => {
-    // Only load classes if user is authenticated
-    if (!isAuthenticated) {
+    // 3. WAIT for authentication to finish and ensure the user has the correct role.
+    if (authIsLoading || !isAuthenticated || role !== 'instructor') {
       setIsLoading(false);
+      setHasInitialized(true); // Mark as initialized so it doesn't hang
       return;
     }
 
@@ -98,7 +96,7 @@ export const ClassProvider: React.FC<{
     };
 
     load();
-  }, [isAuthenticated]); // Re-run when authentication status changes
+  }, [isAuthenticated, authIsLoading, role]); // ADD authIsLoading and role to the dependency array.
 
   const selectClass = (cls: InstructorClass | null) => {
     setSelectedClass(cls);

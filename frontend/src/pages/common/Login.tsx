@@ -1,31 +1,32 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom"; // 👈 --- Import useLocation
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-
-import { fetchWithAuth } from "@/utils/api";
-import { useAuth } from "@/contexts/AuthContext"; // ← ADD THIS IMPORT
+import { useAuth } from "@/contexts/AuthContext";
 import ConsentForm from "@/components/common/ConsentForm";
-import StudentSurvey from "@/components/student/StudentSurvey";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth(); // ← ADD THIS HOOK
+  const location = useLocation(); // 👈 --- Get location for redirect logic
+  const { login } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showAccessDialog, setShowAccessDialog] = useState(false);
   const [accessMessage, setAccessMessage] = useState("");
   const [showConsentForm, setShowConsentForm] = useState(false);
-  const [showSurvey, setShowSurvey] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRequiredMessage, setShowRequiredMessage] = useState(false);
   const [requiredMessage, setRequiredMessage] = useState("");
-  const [showCompletionThankYou, setShowCompletionThankYou] = useState(false);
+
+  // Determine where to redirect after a successful login.
+  // This allows sending users back to the page they were trying to access.
+  const from = location.state?.from?.pathname || "/";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +34,8 @@ const Login = () => {
     setIsSubmitting(true);
   
     try {
-      const response = await fetchWithAuth("/api/auth/login", {
+      // The fetch logic is fine.
+      const response = await fetch("/api/auth/login", { // Use fetch directly, fetchWithAuth might fail before token is set
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -47,41 +49,12 @@ const Login = () => {
       const data = await response.json();
       setUserData(data);
   
-      // Check if user needs to provide consent
       if (data.needs_consent) {
         setShowConsentForm(true);
         setIsSubmitting(false);
         return;
       }
   
-      // If they've consented, check if they need to complete the survey
-      if (data.user.is_student && !data.user.has_completed_survey) {
-        try {
-          const surveyResponse = await fetchWithAuth(`/api/surveys/status/${data.user.id}`);
-          
-          if (surveyResponse.ok) {
-            const surveyData = await surveyResponse.json();
-            
-            if (!surveyData.completedSurveys?.includes('pre') && !surveyData.has_completed_survey) {
-              setShowSurvey(true);
-              setIsSubmitting(false);
-              return;
-            }
-          } else {
-            // If we can't check survey status, show the survey to be safe
-            setShowSurvey(true);
-            setIsSubmitting(false);
-            return;
-          }
-        } catch (err) {
-          // If error occurs, show the survey to be safe
-          setShowSurvey(true);
-          setIsSubmitting(false);
-          return;
-        }
-      }
-  
-      // If they've completed consent and survey, check if access is restricted
       if (data.access_restricted) {
         setAccessMessage(data.access_message);
         setShowAccessDialog(true);
@@ -89,7 +62,6 @@ const Login = () => {
         return;
       }
   
-      // If all checks pass, complete login
       completeLogin(data);
   
     } catch (error) {
@@ -98,66 +70,32 @@ const Login = () => {
     }
   };
   
-  const handleConsentComplete = async () => {
-    // After consent is complete, show the survey if the user is a student
-    if (userData.user.is_student) {
-      setShowConsentForm(false);
-      setShowSurvey(true);
-    } else {
-      // If not a student, proceed directly to the app
-      completeLogin(userData);
-    }
+  const handleConsentComplete = () => {
+    completeLogin(userData);
   };
 
   const handleConsentCancel = () => {
-    // Show required message
     setRequiredMessage("You must consent to the research study to access ChitterChatter.");
     setShowRequiredMessage(true);
-    
-    // Clear form data
     setShowConsentForm(false);
     setUserData(null);
-    setPassword("");  // Clear password for security
+    setPassword("");
   };
 
-  const handleSurveyComplete = () => {
-    // After survey is complete, proceed to the app
-    // Update the user data to reflect that the survey is now complete
-    if (userData && userData.user) {
-      userData.user.has_completed_survey = true;
-    }
-    setShowSurvey(false);
-    setShowCompletionThankYou(true);
-  };
-
-  const handleSurveySkip = () => {
-    // Survey is mandatory, show required message
-    setRequiredMessage("You must complete the survey to access ChitterChatter.");
-    setShowRequiredMessage(true);
-    setShowSurvey(false);
-  };
-
+  // 👇 --- THIS IS THE MAIN FIX FOR THE LOGIN FLOW --- 👇
   const completeLogin = (data: any) => {
-    // Store access token & user data (KEEP THIS - still needed)
-    localStorage.setItem("access_token", data.access_token);
-    localStorage.setItem("user_role", data.user.is_student ? "student" : "instructor");
-    localStorage.setItem("is_master", JSON.stringify(data.user.is_master));
-    
-    // ← ADD THIS: Update AuthContext state AFTER storing token
+    // 1. Determine the role from the user data
     const userRole = data.user.is_master ? "master" : (data.user.is_student ? "student" : "instructor");
-    login(userRole, data.access_token);
     
-    // Redirect user based on role
-    if (data.user.is_master) {
-      navigate("/master/dashboard");
-    } else if (data.user.is_student) {
-      navigate("/dashboard"); // Student dashboard route
-    } else {
-      navigate("/instructor/dashboard"); // Instructor dashboard route
-    }
+    // 2. Call the context's login function. This is the SINGLE source of truth
+    //    for setting state and localStorage. Pass the full user object.
+    login(userRole, data.access_token, data.user);
+    
+    // 3. Navigate the user away from the login page.
+    //    If they were trying to go somewhere specific, send them there.
+    //    Otherwise, the root "/" will handle the redirect.
+    navigate(from, { replace: true });
   };
-
-  // ... rest of your component remains exactly the same
   
   // If we're showing the consent form, return that directly
   if (showConsentForm) {
@@ -171,30 +109,10 @@ const Login = () => {
       >
         <ConsentForm 
           email={email}
-          accessGroup={userData?.user?.access_group || ""}
+          accessGroup="" // Empty since access groups are removed
           isStudent={userData?.user?.is_student || true}
           onComplete={handleConsentComplete}
           onCancel={handleConsentCancel}
-        />
-      </motion.div>
-    );
-  }
-
-  // If we're showing the survey, return that
-  if (showSurvey) {
-    return (
-      <motion.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
-        exit={{ opacity: 0 }} 
-        transition={{ duration: 0.5 }}
-        className="flex h-screen flex-col items-center justify-center"
-      >
-        <StudentSurvey 
-          email={email}
-          user={userData.user}
-          onComplete={handleSurveyComplete}
-          onSkip={handleSurveySkip}
         />
       </motion.div>
     );
@@ -231,51 +149,7 @@ const Login = () => {
     );
   }
 
-  if (showCompletionThankYou) {
-    return (
-      <motion.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
-        exit={{ opacity: 0 }} 
-        transition={{ duration: 0.5 }}
-        className="flex h-screen flex-col items-center justify-center"
-      >
-        <Card className="w-[500px] max-w-[95vw]">
-          <CardHeader>
-            <CardTitle className="text-center">Registration Complete</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-green-50 border border-green-200 rounded-md text-center">
-              <p className="font-semibold mb-2">Thank you for completing the process!</p>
-              {userData?.user?.is_student && (
-                <>
-                  <p>You've been assigned to <span className="font-semibold">Group {userData.user.access_group}</span>.</p>
-                  {userData.user.access_group === "A" && (
-                    <p className="text-sm mt-2">You can access the tool from March 10, 2025, to March 30, 2025.</p>
-                  )}
-                  {userData.user.access_group === "B" && (
-                    <p className="text-sm mt-2">You can access the tool from April 7, 2025, to April 27, 2025.</p>
-                  )}
-                  {userData.user.access_group === "All" && (
-                    <p className="text-sm mt-2">You have full access.</p>
-                  )}
-                  {userData.user.access_group === "Normal" && (
-                    <p className="text-sm mt-2">You have access until April 27th, 2025.</p>
-                  )}
-                </>
-              )}
-            </div>
-            
-            <Button onClick={() => setShowCompletionThankYou(false)} className="w-full">
-              Proceed to Login
-            </Button>
-          </CardContent>
-        </Card>
-      </motion.div>
-    );
-  }
-
-  // Otherwise show the login form
+  // Show the login form
   return (
     <motion.div 
       initial={{ opacity: 0 }} 

@@ -9,7 +9,11 @@ import InstitutionSelector from '@/components/master/InstitutionSelector';
 import TermSelector from '@/components/master/TermSelector';
 import ClassSelector from '@/components/master/ClassSelector';
 import SectionManager from '@/components/master/SectionManager';
+import EditInstitutionModal from '@/components/master/EditInstitutionModal';
+import EditTermModal from '@/components/master/EditTermModal';
+import EditClassModal from '@/components/master/EditClassModal';
 import { Institution, Term, Class } from '@/services/masterService';
+import { Edit3, Trash2 } from 'lucide-react';
 
 const ClassesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +26,16 @@ const ClassesPage: React.FC = () => {
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
   const [selectedTerm, setSelectedTerm] = useState<Term | null>(null);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
+
+  // Edit modal states
+  const [editInstitutionModalOpen, setEditInstitutionModalOpen] = useState(false);
+  const [editTermModalOpen, setEditTermModalOpen] = useState(false);
+  const [editClassModalOpen, setEditClassModalOpen] = useState(false);
+
+  // Refresh triggers for child components
+  const [refreshInstitutions, setRefreshInstitutions] = useState(0);
+  const [refreshTerms, setRefreshTerms] = useState(0);
+  const [refreshClasses, setRefreshClasses] = useState(0);
 
   useEffect(() => {
     const checkMasterStatus = async () => {
@@ -86,6 +100,107 @@ const ClassesPage: React.FC = () => {
     }
   }, [successMessage]);
 
+  // Delete handlers
+  const handleDeleteInstitution = async () => {
+    if (!selectedInstitution) return;
+    
+    if (!confirm(`Are you sure you want to delete the institution "${selectedInstitution.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetchWithAuth(`/api/master/institutions/${selectedInstitution.id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        setSuccessMessage('Institution deleted successfully');
+        setSelectedInstitution(null);
+        setSelectedTerm(null);
+        setSelectedClass(null);
+        setRefreshInstitutions(prev => prev + 1);
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to delete institution');
+      }
+    } catch (err) {
+      setError('Failed to delete institution');
+      console.error('Delete institution error:', err);
+    }
+  };
+
+  const handleDeleteTerm = async () => {
+    if (!selectedTerm) return;
+    
+    if (!confirm(`Are you sure you want to delete the term "${selectedTerm.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetchWithAuth(`/api/master/terms/${selectedTerm.id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        setSuccessMessage('Term deleted successfully');
+        setSelectedTerm(null);
+        setSelectedClass(null);
+        setRefreshTerms(prev => prev + 1);
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to delete term');
+      }
+    } catch (err) {
+      setError('Failed to delete term');
+      console.error('Delete term error:', err);
+    }
+  };
+
+  const handleDeleteClass = async () => {
+    if (!selectedClass) return;
+    
+    if (!confirm(`Are you sure you want to delete the class "${selectedClass.course_code} - ${selectedClass.title}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetchWithAuth(`/api/master/classes/${selectedClass.id}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        setSuccessMessage('Class deleted successfully');
+        setSelectedClass(null);
+        setRefreshClasses(prev => prev + 1);
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to delete class');
+      }
+    } catch (err) {
+      setError('Failed to delete class');
+      console.error('Delete class error:', err);
+    }
+  };
+
+  // Edit success handlers
+  const handleInstitutionEditSuccess = (updatedInstitution: Institution) => {
+    setSelectedInstitution(updatedInstitution);
+    setSuccessMessage('Institution updated successfully');
+    setRefreshInstitutions(prev => prev + 1);
+  };
+
+  const handleTermEditSuccess = (updatedTerm: Term) => {
+    setSelectedTerm(updatedTerm);
+    setSuccessMessage('Term updated successfully');
+    setRefreshTerms(prev => prev + 1);
+  };
+
+  const handleClassEditSuccess = (updatedClass: Class) => {
+    setSelectedClass(updatedClass);
+    setSuccessMessage('Class updated successfully');
+    setRefreshClasses(prev => prev + 1);
+  };
+
   if (loading) {
     return <div className="p-6">Loading class management...</div>;
   }
@@ -123,16 +238,42 @@ const ClassesPage: React.FC = () => {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Institutions</CardTitle>
-            <CardDescription>
-              Select an institution or add a new one
-            </CardDescription>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Institutions</CardTitle>
+                <CardDescription>
+                  Select an institution or add a new one
+                </CardDescription>
+              </div>
+              {selectedInstitution && (
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setEditInstitutionModalOpen(true)}
+                  >
+                    <Edit3 className="h-4 w-4 mr-1" />
+                    Edit Institution
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleDeleteInstitution}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete Institution
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <InstitutionSelector 
               onSelect={handleInstitutionSelect} 
               onSuccess={(message) => setSuccessMessage(message)}
               onError={(message) => setError(message)}
+              key={refreshInstitutions}
             />
           </CardContent>
         </Card>
@@ -147,9 +288,32 @@ const ClassesPage: React.FC = () => {
                     Select a term or add a new one
                   </CardDescription>
                 </div>
-                <Button variant="outline" onClick={() => setSelectedInstitution(null)}>
-                  Change Institution
-                </Button>
+                <div className="flex space-x-2">
+                  {selectedTerm && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setEditTermModalOpen(true)}
+                      >
+                        <Edit3 className="h-4 w-4 mr-1" />
+                        Edit Term
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleDeleteTerm}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete Term
+                      </Button>
+                    </>
+                  )}
+                  <Button variant="outline" onClick={() => setSelectedInstitution(null)}>
+                    Change Institution
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -158,6 +322,7 @@ const ClassesPage: React.FC = () => {
                 onSelect={handleTermSelect}
                 onSuccess={(message) => setSuccessMessage(message)}
                 onError={(message) => setError(message)}
+                key={refreshTerms}
               />
             </CardContent>
           </Card>
@@ -173,9 +338,32 @@ const ClassesPage: React.FC = () => {
                     Select a class or add a new one
                   </CardDescription>
                 </div>
-                <Button variant="outline" onClick={() => setSelectedTerm(null)}>
-                  Change Term
-                </Button>
+                <div className="flex space-x-2">
+                  {selectedClass && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setEditClassModalOpen(true)}
+                      >
+                        <Edit3 className="h-4 w-4 mr-1" />
+                        Edit Class
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleDeleteClass}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete Class
+                      </Button>
+                    </>
+                  )}
+                  <Button variant="outline" onClick={() => setSelectedTerm(null)}>
+                    Change Term
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -185,6 +373,7 @@ const ClassesPage: React.FC = () => {
                 onSelect={handleClassSelect}
                 onSuccess={(message) => setSuccessMessage(message)}
                 onError={(message) => setError(message)}
+                key={refreshClasses}
               />
             </CardContent>
           </Card>
@@ -200,9 +389,11 @@ const ClassesPage: React.FC = () => {
                     Manage sections for this class
                   </CardDescription>
                 </div>
-                <Button variant="outline" onClick={() => setSelectedClass(null)}>
-                  Change Class
-                </Button>
+                <div className="flex space-x-2">
+                  <Button variant="outline" onClick={() => setSelectedClass(null)}>
+                    Change Class
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -218,6 +409,31 @@ const ClassesPage: React.FC = () => {
           </Card>
         )}
       </div>
+
+      {/* Edit Modals */}
+      <EditInstitutionModal
+        open={editInstitutionModalOpen}
+        onClose={() => setEditInstitutionModalOpen(false)}
+        institution={selectedInstitution}
+        onSuccess={handleInstitutionEditSuccess}
+        onError={(message) => setError(message)}
+      />
+
+      <EditTermModal
+        open={editTermModalOpen}
+        onClose={() => setEditTermModalOpen(false)}
+        term={selectedTerm}
+        onSuccess={handleTermEditSuccess}
+        onError={(message) => setError(message)}
+      />
+
+      <EditClassModal
+        open={editClassModalOpen}
+        onClose={() => setEditClassModalOpen(false)}
+        classItem={selectedClass}
+        onSuccess={handleClassEditSuccess}
+        onError={(message) => setError(message)}
+      />
     </div>
   );
 };

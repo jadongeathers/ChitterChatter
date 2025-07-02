@@ -288,6 +288,52 @@ def institutions():
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
+@master.route("/institutions/<int:institution_id>", methods=["PUT", "DELETE"])
+@master_required
+def manage_institution(institution_id):
+    """Update or delete an institution."""
+    institution = Institution.query.get_or_404(institution_id)
+    
+    if request.method == "DELETE":
+        try:
+            # Check if institution has associated terms/classes
+            term_count = Term.query.filter_by(institution_id=institution_id).count()
+            class_count = Class.query.filter_by(institution_id=institution_id).count()
+            
+            if term_count > 0 or class_count > 0:
+                return jsonify({
+                    "error": "Cannot delete institution with associated terms or classes"
+                }), 400
+            
+            db.session.delete(institution)
+            db.session.commit()
+            return jsonify({"message": "Institution deleted successfully"})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 400
+    
+    # PUT: update institution
+    data = request.get_json() or {}
+    
+    if "name" in data:
+        if not data["name"].strip():
+            return jsonify({"error": "Institution name cannot be empty"}), 400
+        institution.name = data["name"].strip()
+    
+    if "location" in data:
+        institution.location = data["location"]
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            "id": institution.id,
+            "name": institution.name,
+            "location": institution.location
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
+
 # ============================================================================
 # TERM MANAGEMENT
 # ============================================================================
@@ -350,6 +396,68 @@ def terms():
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
+@master.route("/terms/<int:term_id>", methods=["PUT", "DELETE"])
+@master_required
+def manage_term(term_id):
+    """Update or delete a term."""
+    term = Term.query.get_or_404(term_id)
+    
+    if request.method == "DELETE":
+        try:
+            # Check if term has associated sections
+            section_count = Section.query.filter_by(term_id=term_id).count()
+            
+            if section_count > 0:
+                return jsonify({
+                    "error": "Cannot delete term with associated sections"
+                }), 400
+            
+            db.session.delete(term)
+            db.session.commit()
+            return jsonify({"message": "Term deleted successfully"})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 400
+    
+    # PUT: update term
+    data = request.get_json() or {}
+    
+    if "name" in data:
+        if not data["name"].strip():
+            return jsonify({"error": "Term name cannot be empty"}), 400
+        term.name = data["name"].strip()
+    
+    if "code" in data:
+        if not data["code"].strip():
+            return jsonify({"error": "Term code cannot be empty"}), 400
+        term.code = data["code"].strip()
+    
+    if "start_date" in data:
+        try:
+            term.start_date = datetime.strptime(data["start_date"], "%Y-%m-%d").date()
+        except ValueError:
+            return jsonify({"error": "Invalid start date format. Use YYYY-MM-DD"}), 400
+    
+    if "end_date" in data:
+        try:
+            term.end_date = datetime.strptime(data["end_date"], "%Y-%m-%d").date()
+        except ValueError:
+            return jsonify({"error": "Invalid end date format. Use YYYY-MM-DD"}), 400
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            "id": term.id,
+            "name": term.name,
+            "code": term.code,
+            "start_date": term.start_date.isoformat(),
+            "end_date": term.end_date.isoformat(),
+            "institution_id": term.institution_id
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
+
 # ============================================================================
 # CLASS MANAGEMENT
 # ============================================================================
@@ -393,6 +501,54 @@ def classes():
             "title": cls.title,
             "institution_id": cls.institution_id
         }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
+
+@master.route("/classes/<int:class_id>", methods=["PUT", "DELETE"])
+@master_required
+def manage_class(class_id):
+    """Update or delete a class."""
+    cls = Class.query.get_or_404(class_id)
+    
+    if request.method == "DELETE":
+        try:
+            # Check if class has associated sections
+            section_count = Section.query.filter_by(class_id=class_id).count()
+            
+            if section_count > 0:
+                return jsonify({
+                    "error": "Cannot delete class with associated sections"
+                }), 400
+            
+            db.session.delete(cls)
+            db.session.commit()
+            return jsonify({"message": "Class deleted successfully"})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 400
+    
+    # PUT: update class
+    data = request.get_json() or {}
+    
+    if "course_code" in data:
+        if not data["course_code"].strip():
+            return jsonify({"error": "Course code cannot be empty"}), 400
+        cls.course_code = data["course_code"].strip()
+    
+    if "title" in data:
+        if not data["title"].strip():
+            return jsonify({"error": "Class title cannot be empty"}), 400
+        cls.title = data["title"].strip()
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            "id": cls.id,
+            "course_code": cls.course_code,
+            "title": cls.title,
+            "institution_id": cls.institution_id
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400

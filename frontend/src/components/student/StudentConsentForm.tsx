@@ -6,8 +6,8 @@ const StudentConsentForm: React.FC = () => {
       <h2 className="text-xl font-semibold text-center">Student Consent Form</h2>
       
       <p>
-        We are asking you to participate in a research study titled "Exploring AI-Powered Virtual
-        Practice Partners (VPPs) for Language Learning in University Classrooms". This study
+        We are asking you to participate in a research study on exploring AI-powered virtual
+        practice partners (VPPs) for language learning in classrooms. This study
         is being led by Jadon Geathers, Department of Information Science at Cornell
         University. The Faculty Advisors for this study are Rene Kizilcec and AJ Alvero,
         Department of Information Science at Cornell University.
@@ -20,33 +20,7 @@ const StudentConsentForm: React.FC = () => {
           AI-powered tool, can enhance language learning. The study aims to understand how
           the VPP supports students in practicing speaking, building confidence, and improving
           language proficiency, as well as how students interact with and perceive its usefulness.
-          Additionally, instructors will provide insights into the integration of the VPP into their
-          teaching practice.
         </p>
-      </div>
-      
-      <div>
-        <h3 className="text-lg font-semibold">What we will ask you to do</h3>
-        <p>The study will last 4 weeks and all participants are asked to complete a pre- and post-survey:</p>
-        <ol className="list-decimal pl-5 space-y-2">
-          <li>
-            <span className="font-medium">Pre-study survey (10 minutes):</span> You will complete a short survey about your
-            current experiences with speaking your target language.
-          </li>
-          <li>
-            <span className="font-medium">Post-study survey (10 minutes):</span> You will complete a short survey after the study 
-            to share your thoughts on your language learning experience.
-          </li>
-          <li>
-            <span className="font-medium">Speaking practice sessions (~40-60 minutes/week):</span> You will use the VPP for
-            short, interactive speaking practice sessions 2-3 times a week over 4 weeks.
-            Each session will last at most 20 minutes and can be done outside of class time.
-          </li>
-          <li>
-            <span className="font-medium">Optional interview (30 minutes):</span> You may choose to participate in a one-on-one,
-            private interview to provide detailed feedback about your experience.
-          </li>
-        </ol>
       </div>
       
       <div>
@@ -69,20 +43,6 @@ const StudentConsentForm: React.FC = () => {
         </p>
       </div>
       
-      <div>
-        <h3 className="text-lg font-semibold">Incentives for participation</h3>
-        <p>There are no financial incentives for participating in this study.</p>
-      </div>
-      
-      <div>
-        <h3 className="text-lg font-semibold">Audio/Video Recording</h3>
-        <p>
-          Audio recordings will be used during optional one-on-one interviews to capture
-          VPP-users' feedback about their experience with the VPP. These recordings will be
-          transcribed and analyzed for our research. Once transcription is complete and verified,
-          the recordings will be securely deleted within 6 months.
-        </p>
-      </div>
       
       <div>
         <h3 className="text-lg font-semibold">Privacy/Confidentiality/Data Security</h3>
@@ -105,8 +65,7 @@ const StudentConsentForm: React.FC = () => {
           with institutional privacy and data security standards. Only authorized members of the
           research team will have access to identifying information, which will be stored
           separately from research data (e.g., signed consent forms). Sensitive data in an
-          electronic environment will be encrypted during storage and transfer, and all identifying
-          information will be deleted after the study concludes (~6 months).
+          electronic environment will be encrypted during storage and transfer.
         </p>
         <p className="mt-2">
           We will do our best to keep your participation in this research study confidential to the

@@ -3,9 +3,9 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import PracticeCaseCard from "@/components/student/PracticeCaseCard"; 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, ArrowRight, Sparkles, Target, Play } from "lucide-react";
+import { BookOpen, ArrowRight, Sparkles, Target, Play, CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 export interface PracticeCase {
@@ -94,85 +94,83 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
       animate="visible"
       variants={containerVariants}
     >
-      <Card className="shadow-lg border-0 bg-white">
-        <CardHeader className="bg-white border-b border-gray-100">
+      <Card className="hover:shadow-md transition-shadow">
+        <CardHeader>
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <BookOpen className="h-5 w-5 text-blue-600" />
-              </div>
+            <div className="flex items-center">
+              <BookOpen className="h-6 w-6 text-blue-600 mr-3" />
               <div>
-                <CardTitle className="text-gray-800">Your Practice Cases</CardTitle>
-                <p className="text-sm text-gray-600 mt-1">
+                <CardTitle className="text-gray-800">Practice Cases</CardTitle>
+                <CardDescription>
                   Continue your learning journey with these practice exercises
-                </p>
+                </CardDescription>
               </div>
             </div>
             
             {accessibleCases.length > 3 && (
               <Button
                 onClick={handleViewAllCases}
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="text-gray-600 hover:text-gray-700 hover:bg-gray-50"
+                className="ml-4"
               >
-                View All Cases
+                View All
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             )}
           </div>
 
-          {/* Quick Stats */}
+          {/* Quick Stats Row */}
           {practiceCases.length > 0 && (
-            <div className="flex items-center space-x-6 mt-4">
-              <div className="flex items-center space-x-2">
-                <Target className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-600">
+            <div className="flex items-center gap-6 pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-gray-700">
                   {completedCases.length} completed
                 </span>
               </div>
-              <div className="flex items-center space-x-2">
-                <Play className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-600">
-                  {inProgressCases.length} incomplete
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-gray-700">
+                  {inProgressCases.length} in progress
                 </span>
               </div>
-              <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                {practiceCases.length} total {practiceCases.length === 1 ? 'case' : 'cases'}
+              <Badge variant="secondary" className="text-xs">
+                {practiceCases.length} total
               </Badge>
             </div>
           )}
         </CardHeader>
 
-        <CardContent className="p-6">
+        <CardContent>
           {practiceCases.length === 0 ? (
             <motion.div 
               variants={itemVariants}
-              className="text-center py-8"
+              className="text-center py-12"
             >
-              <div className="bg-gray-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <div className="bg-gray-50 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                 <BookOpen className="h-8 w-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-semibold text-gray-700 mb-2">No Practice Cases Yet</h3>
-              <p className="text-gray-500 mb-4 max-w-md mx-auto">
+              <p className="text-gray-500 max-w-sm mx-auto text-sm">
                 Your instructor hasn't published any practice cases yet. Check back soon to start your learning journey!
               </p>
             </motion.div>
           ) : recentCases.length === 0 ? (
             <motion.div 
               variants={itemVariants}
-              className="text-center py-8"
+              className="text-center py-12"
             >
-              <div className="bg-amber-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <div className="bg-amber-50 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                 <BookOpen className="h-8 w-8 text-amber-500" />
               </div>
               <h3 className="text-lg font-semibold text-gray-700 mb-2">Cases Coming Soon</h3>
-              <p className="text-gray-500 mb-4 max-w-md mx-auto">
+              <p className="text-gray-500 max-w-sm mx-auto text-sm">
                 There are {practiceCases.length} practice cases available, but none are accessible yet. Check back later!
               </p>
             </motion.div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {recentCases.map((practiceCase, index) => (
                 <motion.div key={practiceCase.id} variants={itemVariants} className="relative">
                   {/* New Badge for recently accessible cases */}
@@ -180,7 +178,7 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
                    !practiceCase.completed && 
                    new Date(practiceCase.accessible_on).getTime() > Date.now() - 86400000 && (
                     <div className="absolute -top-2 -right-2 z-10">
-                      <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 shadow-lg flex items-center gap-1">
+                      <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-sm flex items-center gap-1 text-xs">
                         <Sparkles className="h-3 w-3" />
                         New
                       </Badge>
@@ -190,8 +188,9 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
                   {/* Completed Badge */}
                   {practiceCase.completed && (
                     <div className="absolute -top-2 -right-2 z-10">
-                      <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-lg">
-                        ✓ Completed
+                      <Badge className="bg-green-600 text-white border-0 shadow-sm text-xs">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Completed
                       </Badge>
                     </div>
                   )}
@@ -205,24 +204,30 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
             </div>
           )}
 
-          {/* Call to Action for more cases - more compact */}
+          {/* View More Section */}
           {accessibleCases.length > 3 && (
             <motion.div 
               variants={itemVariants}
-              className="mt-6 pt-4 border-t border-gray-100 text-center"
+              className="mt-6 pt-4 border-t border-gray-100"
             >
-              <p className="text-gray-600 mb-3 text-sm">
-                You have {accessibleCases.length - 3} more cases available.
-              </p>
-              <Button 
-                onClick={handleViewAllCases}
-                variant="outline"
-                className="bg-white hover:bg-gray-50 border-gray-200 text-gray-600"
-              >
-                <BookOpen className="h-4 w-4 mr-2" />
-                View All Practice Cases
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">
+                    {accessibleCases.length - 3} more cases available
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Continue your practice with additional exercises
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleViewAllCases}
+                  variant="outline"
+                  size="sm"
+                >
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View All Cases
+                </Button>
+              </div>
             </motion.div>
           )}
         </CardContent>

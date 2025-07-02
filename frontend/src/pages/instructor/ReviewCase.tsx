@@ -207,6 +207,8 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       });
 
       if (response.ok) {
+        const { case: updatedCase } = await response.json();
+        setPracticeCase(updatedCase); 
         setHasUnsavedChanges(false);
       }
     } catch (error) {
@@ -214,7 +216,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     } finally {
       setIsAutoSaving(false);
     }
-  }, [practiceCase, hasUnsavedChanges, isNew]);
+  }, [practiceCase, hasUnsavedChanges, isNew, feedbackPrompt]);
 
   // Auto-save timer
   useEffect(() => {
@@ -270,7 +272,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     if (!practiceCase?.curricular_goals?.trim()) errors.push("Curricular goals are required");
     if (!practiceCase?.behavioral_guidelines?.trim()) errors.push("Behavioral guidelines are required");
     if (!practiceCase?.proficiency_level?.trim()) errors.push("Proficiency level is required");
-    if (!practiceCase?.min_time || practiceCase.min_time < 60) errors.push("Minimum time must be at least 1 minute");
+    if (!practiceCase?.min_time || practiceCase.min_time < 1) errors.push("Minimum time must be at least 1 minute");
     if (!practiceCase?.max_time || practiceCase.max_time < practiceCase.min_time) errors.push("Maximum time must be greater than minimum time");
     if (!practiceCase?.accessible_on) errors.push("Access date and time are required");
     
@@ -339,16 +341,13 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         published: false
       };
 
-      // For new cases, class_id is required
       if (isNew && !payload.class_id) {
         throw new Error("Class ID is required");
       }
 
       const response = await fetchWithAuth(endpoint, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
@@ -357,18 +356,17 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         throw new Error(errorData.error || "Failed to save draft");
       }
 
-      setStatusMessage({
-        type: 'success',
-        message: "Draft saved successfully!"
-      });
+      setStatusMessage({ type: 'success', message: "Draft saved successfully!" });
       setHasUnsavedChanges(false);
 
       if (isNew) {
         const data = await response.json();
-        // Update the URL and state to reflect this is no longer a new case
-        window.history.replaceState({}, '', `/instructor/feedback/${data.id}?tab=edit`);
-        setPracticeCase(prev => prev ? { ...prev, id: data.id } : null);
-        // Don't navigate away, just update the state
+        // FIX: Navigate to the new URL. This forces a reload into "edit" mode.
+        navigate(`/instructor/feedback/${data.id}`, { replace: true });
+      } else {
+        // FIX: Update the local state with the response from the server.
+        const { case: updatedCase } = await response.json();
+        setPracticeCase(updatedCase);
       }
     } catch (error) {
       console.error("Error saving draft:", error);
@@ -396,28 +394,22 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     setIsSaving(true);
 
     try {
-      let endpoint, method;
-      
-      if (isNew) {
-        endpoint = "/api/practice_cases/add_case";
-        method = "POST";
-      } else {
-        endpoint = `/api/practice_cases/publish_case/${caseId}`;
-        method = "PUT";
-      }
+      const endpoint = isNew
+        ? "/api/practice_cases/add_case"
+        : `/api/practice_cases/publish_case/${caseId}`;
+        
+      const method = isNew ? "POST" : "PUT";
 
       const payload: any = {
         ...practiceCase,
-        feedbackPrompt: feedbackPrompt,
+        feedback_prompt: feedbackPrompt, // <-- FIX: Changed from feedbackPrompt
         is_draft: false,
         published: true
       };
 
       const response = await fetchWithAuth(endpoint, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
@@ -426,18 +418,17 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         throw new Error(errorData.error || "Failed to publish practice case");
       }
 
-      setStatusMessage({
-        type: 'success',
-        message: "Practice case published successfully!"
-      });
+      setStatusMessage({ type: 'success', message: "Practice case published successfully!" });
       setHasUnsavedChanges(false);
 
       if (isNew) {
         const data = await response.json();
+        // FIX: Navigate to the new URL after publishing a new case.
         navigate(`/instructor/feedback/${data.id}`);
       } else {
-        // Update local state to reflect published status
-        setPracticeCase(prev => prev ? { ...prev, published: true, is_draft: false } : null);
+        // FIX: Update local state with the full object from the response.
+        const { case: updatedCase } = await response.json();
+        setPracticeCase(updatedCase);
       }
     } catch (error) {
       console.error("Error publishing practice case:", error);
@@ -724,14 +715,14 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
                           max="30"
                           value={practiceCase ? Math.floor(practiceCase.min_time / 60) : 0}
                           onChange={(e) => {
-                            const minutes = Math.max(0, Math.min(30, Number(e.target.value) || 0));
+                            const minutes = Math.max(1, Math.min(30, Number(e.target.value) || 0));
                             handleFieldChange('min_time', minutes * 60);
                           }}
                           placeholder="Enter minutes (0-30)"
                           className="text-base"
                         />
                         <p className="text-sm text-gray-600">
-                          Minimum time students must practice before they can finish (0-30 minutes)
+                          Minimum time students must practice before they can finish (1-30 minutes)
                         </p>
                       </div>
 
@@ -746,14 +737,14 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
                           max="30"
                           value={practiceCase ? Math.floor(practiceCase.max_time / 60) : 0}
                           onChange={(e) => {
-                            const minutes = Math.max(0, Math.min(30, Number(e.target.value) || 0));
+                            const minutes = Math.max(1, Math.min(30, Number(e.target.value) || 0));
                             handleFieldChange('max_time', minutes * 60);
                           }}
                           placeholder="Enter minutes (0-30)"
                           className="text-base"
                         />
                         <p className="text-sm text-gray-600">
-                          Maximum time before the session automatically ends (0-30 minutes)
+                          Maximum time before the session automatically ends (1-30 minutes)
                         </p>
                       </div>
                     </div>
@@ -847,7 +838,8 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
                             <Button
                               variant="outline"
                               size="sm"
-                              disabled
+                              // FIX: Remove the disabled prop to enable the button
+                              // disabled 
                               onClick={() => playVoicePreview(practiceCase?.voice || "verse")}
                               className="flex items-center space-x-2 border-blue-300 text-blue-700 hover:bg-blue-100 ml-3"
                             >
@@ -859,7 +851,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
                       )}
                       
                       <p className="text-sm text-gray-600">
-                        The AI voice personality for the conversation partner. Use the preview button to hear each voice (feature coming soon).
+                        The AI voice personality for the conversation partner. Use the preview button to hear each voice.
                       </p>
                     </div>
                   </CardContent>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -91,95 +91,68 @@ const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
   onFeedbackChange,
   className = ""
 }) => {
-  console.log('FeedbackConfiguration rendered with:', {
-    initialFeedbackPrompt: initialFeedbackPrompt?.substring(0, 100) + '...',
-    hasPrompt: !!initialFeedbackPrompt
-  });
-  const [feedbackSections, setFeedbackSections] = useState<FeedbackSection[]>([]);
+  const [feedbackSections, setFeedbackSections] = useState<FeedbackSection[]>(getPredefinedSections());
   const [customFeedback, setCustomFeedback] = useState<string[]>([]);
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [newSectionText, setNewSectionText] = useState("");
-  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Use a ref to track if it's the initial mount. This prevents
+  // onFeedbackChange from firing when the component first loads.
+  const isMounted = useRef(false);
 
-  // Initialize feedback sections
+  // This effect synchronizes the component's state with the incoming `initialFeedbackPrompt`.
+  // It runs whenever a new case is loaded (i.e., when `initialFeedbackPrompt` changes).
   useEffect(() => {
-    const sections = getPredefinedSections();
-    setFeedbackSections(sections);
-  }, []);
-
-  // Parse feedback prompt separately after sections are initialized
-
-  useEffect(() => {
-    if (!isInitialized && initialFeedbackPrompt?.trim()) {
+    if (initialFeedbackPrompt?.trim()) {
       parseFeedbackPrompt(initialFeedbackPrompt);
-      setIsInitialized(true);
+    } else {
+      // If there's no prompt, reset to the default state.
+      setFeedbackSections(getPredefinedSections());
+      setCustomFeedback([]);
     }
-  }, [initialFeedbackPrompt, isInitialized]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFeedbackPrompt]);
 
-  // Notify parent of changes whenever feedback data changes
+  // This effect notifies the parent component of changes, but ONLY after the initial mount.
   useEffect(() => {
-    if (isInitialized) {
+    if (isMounted.current) {
       const newPrompt = generateFeedbackPrompt();
-      console.log('Notifying parent of feedback change:', newPrompt);
       onFeedbackChange(newPrompt);
+    } else {
+      // After the first render, set the ref to true for all subsequent renders.
+      isMounted.current = true;
     }
-  }, [feedbackSections, customFeedback, isInitialized]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedbackSections, customFeedback]);
 
   const parseFeedbackPrompt = (prompt: string) => {
-    console.log('Starting to parse prompt:', prompt);
-    
-    const predefinedSections = getPredefinedSections();
+    const predefined = getPredefinedSections();
     
     // Check which predefined sections are included in the prompt
-    const updatedSections = predefinedSections.map((section) => {
-      // Look for the exact section text in the prompt
-      const isIncluded = prompt.includes(section.text);
-      console.log(`Section "${section.label}":`, {
-        isIncluded,
-        sectionText: section.text.substring(0, 80) + '...'
-      });
-      return {
-        ...section,
-        isChecked: isIncluded,
-      };
-    });
-
-    console.log('Updated sections with checkboxes:', updatedSections.map(s => ({ 
-      label: s.label, 
-      isChecked: s.isChecked 
-    })));
+    const updatedSections = predefined.map((section) => ({
+      ...section,
+      isChecked: prompt.includes(section.text),
+    }));
     
     setFeedbackSections(updatedSections);
 
-    // Extract custom feedback
+    // Extract custom feedback by removing the base prompt and all predefined sections
     let remainingPrompt = prompt;
-    
-    // Remove base prompt if it exists
     if (remainingPrompt.includes(baseFeedbackPrompt)) {
       remainingPrompt = remainingPrompt.replace(baseFeedbackPrompt, "");
     }
     
-    // Remove all predefined section texts that are in the prompt
-    predefinedSections.forEach(section => {
-      if (remainingPrompt.includes(section.text)) {
+    predefined.forEach(section => {
+      if (prompt.includes(section.text)) {
         remainingPrompt = remainingPrompt.replace(section.text, "");
       }
     });
     
-    // Clean up and extract custom feedback
-    // Split by various possible separators and clean up
     const extractedCustomFeedback = remainingPrompt
-      .split(/\n{2,}|\n(?=[A-Z])/) // Split on double newlines or newlines followed by capital letters
+      .split(/\n{2,}/) // Split by double newlines
       .map(text => text.trim())
-      .filter(text => 
-        text.length > 0 && 
-        !text.includes("Below are the specific areas") &&
-        !text.includes("Be careful to include feedback") &&
-        text.length > 20 // Filter out very short fragments
-      );
+      .filter(text => text && !text.includes("Below are the specific areas"))
 
-    console.log('Remaining prompt after cleanup:', remainingPrompt);
-    console.log('Extracted custom feedback:', extractedCustomFeedback);
     setCustomFeedback(extractedCustomFeedback);
   };
 
@@ -190,12 +163,10 @@ const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
 
     const promptParts = [baseFeedbackPrompt];
     
-    // Add selected sections
     if (selectedSections.length > 0) {
       promptParts.push(...selectedSections);
     }
     
-    // Add custom feedback
     if (customFeedback.length > 0) {
       promptParts.push(...customFeedback);
     }

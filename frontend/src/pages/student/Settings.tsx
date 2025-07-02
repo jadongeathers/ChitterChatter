@@ -1,6 +1,6 @@
 // Redesigned Student Settings.tsx
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Card,
   CardContent,
@@ -47,7 +47,9 @@ import {
   CheckCircle,
   Settings as SettingsIcon,
   GraduationCap,
-  BookOpen
+  BookOpen,
+  X,
+  Check
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import StudentClassAwareLayout from "@/components/student/StudentClassAwareLayout";
@@ -75,6 +77,8 @@ const itemVariants = {
     },
   },
 };
+
+
 
 // Form schemas
 const profileSchema = z.object({
@@ -108,12 +112,50 @@ interface StudentUser {
   profile_picture_url?: string;
 }
 
+// Success Banner Component - matching ReviewCase style
+const SuccessBanner: React.FC<{ 
+  message: string; 
+  isVisible: boolean; 
+  onClose: () => void;
+}> = ({ message, isVisible, onClose }) => {
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="p-4 rounded-lg border mb-6 bg-green-50 text-green-800 border-green-200"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Check className="h-5 w-5 text-green-600" />
+              <p className="font-medium">{message}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 const StudentSettings: React.FC = () => {
   const navigate = useNavigate();
   const [userInfo, setUserInfo] = useState<StudentUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notifications, setNotifications] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  
+  // Banner state
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Profile form
   const profileForm = useForm<z.infer<typeof profileSchema>>({
@@ -133,6 +175,16 @@ const StudentSettings: React.FC = () => {
       confirm_password: "",
     },
   });
+
+  // Show success banner helper
+  const showBanner = (message: string) => {
+    setSuccessMessage(message);
+    setShowSuccessBanner(true);
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      setShowSuccessBanner(false);
+    }, 5000);
+  };
 
   // Fetch user data
   useEffect(() => {
@@ -185,7 +237,9 @@ const StudentSettings: React.FC = () => {
       userData.last_name = data.last_name;
       localStorage.setItem("user", JSON.stringify(userData));
       
-      toast.success("Your profile has been updated successfully.");
+      // Show green banner instead of toast
+      showBanner("Your profile has been updated successfully!");
+      
     } catch (error) {
       console.error("Error updating profile:", error);
       toast.error("Failed to update profile. Please try again.");
@@ -214,7 +268,9 @@ const StudentSettings: React.FC = () => {
         confirm_password: "",
       });
       
-      toast.success("Your password has been changed successfully.");
+      // Show green banner for password change too
+      showBanner("Your password has been changed successfully!");
+      
     } catch (error: any) {
       console.error("Error changing password:", error);
       toast.error(error.message || "Failed to change password. Please try again.");
@@ -266,9 +322,9 @@ const StudentSettings: React.FC = () => {
         throw new Error("Failed to update notification preferences");
       }
       
-      toast.success(checked ? "Notifications enabled" : "Notifications disabled", {
-        description: "Your preference has been saved."
-      });
+      // Show green banner for notification changes
+      showBanner(checked ? "Email notifications have been enabled!" : "Email notifications have been disabled!");
+      
     } catch (error) {
       console.error("Error updating notification preferences:", error);
       toast.error("Failed to update notification preferences");
@@ -314,336 +370,295 @@ const StudentSettings: React.FC = () => {
   }
 
   return (
-    <StudentClassAwareLayout
-      title="Settings"
-      description="Manage your account information, security, and preferences"
-    >
-      <motion.div 
-        className="space-y-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
+    <>
+      {/* Success Banner */}
+      <SuccessBanner 
+        message={successMessage}
+        isVisible={showSuccessBanner}
+        onClose={() => setShowSuccessBanner(false)}
+      />
+      
+      <StudentClassAwareLayout
+        title="Settings"
+        description="Manage your account information, security, and preferences"
       >
-        {/* Account Overview Cards */}
-        <motion.div
-          initial={{ opacity: 1, y: 0 }}
-          animate={{ opacity: 1, y: 0 }}
+        <motion.div 
+          className="space-y-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-blue-600 p-2 rounded-lg">
-                    <User className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-blue-900">
-                      {userInfo?.first_name} {userInfo?.last_name}
+          {/* Account Overview Cards */}
+          <motion.div
+            initial={{ opacity: 1, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-600 p-2 rounded-lg">
+                      <User className="h-5 w-5 text-white" />
                     </div>
-                    <div className="text-sm text-blue-700">Account Holder</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-green-600 p-2 rounded-lg">
-                    <GraduationCap className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-green-900">{getAccountStatus()}</div>
-                    <div className="text-sm text-green-700">Account Type</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-purple-600 p-2 rounded-lg">
-                    <Calendar className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-purple-900">{getAccountAge()}</div>
-                    <div className="text-sm text-purple-700">Days Active</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-orange-600 p-2 rounded-lg">
-                    <Clock className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-orange-900">
-                      {userInfo?.last_login ? formatDate(userInfo.last_login) : 'Today'}
+                    <div>
+                      <div className="text-lg font-bold text-blue-900">
+                        {userInfo?.first_name} {userInfo?.last_name}
+                      </div>
+                      <div className="text-sm text-blue-700">Account Holder</div>
                     </div>
-                    <div className="text-sm text-orange-700">Last Login</div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-green-600 p-2 rounded-lg">
+                      <GraduationCap className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-green-900">{getAccountStatus()}</div>
+                      <div className="text-sm text-green-700">Account Type</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-purple-600 p-2 rounded-lg">
+                      <Calendar className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-purple-900">{getAccountAge()}</div>
+                      <div className="text-sm text-purple-700">Days Active</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-orange-600 p-2 rounded-lg">
+                      <Clock className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-orange-900">
+                        {userInfo?.last_login ? formatDate(userInfo.last_login) : 'Today'}
+                      </div>
+                      <div className="text-sm text-orange-700">Last Login</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </motion.div>
+
+          {/* Settings Sections */}
+          <div className="space-y-6">
+            {/* Profile Settings */}
+            <motion.div variants={itemVariants}>
+              <Card className="shadow-lg border border-gray-200 bg-white">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-600 p-2 rounded-lg">
+                      <User className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-gray-900">Profile Information</CardTitle>
+                      <CardDescription className="text-gray-600">
+                        Update your personal information and display preferences
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 pt-0">
+                  <Form {...profileForm}>
+                    <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={profileForm.control}
+                          name="first_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium text-gray-700">First Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter your first name" {...field} className="h-10" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={profileForm.control}
+                          name="last_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium text-gray-700">Last Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter your last name" {...field} className="h-10" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-gray-700">Email Address</FormLabel>
+                        <div className="flex items-center space-x-3">
+                          <Input
+                            type="email"
+                            value={userInfo?.email || ""}
+                            disabled
+                            className="h-10 bg-gray-50 text-gray-500"
+                          />
+                          <Badge variant="outline" className="text-xs">
+                            Verified
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-500">Email address cannot be changed</p>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                          Update Profile
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Security Settings */}
+            <motion.div variants={itemVariants}>
+              <Card className="shadow-lg border border-gray-200 bg-white">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-600 p-2 rounded-lg">
+                      <Key className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-gray-900">Security Settings</CardTitle>
+                      <CardDescription className="text-gray-600">
+                        Manage your password and account security
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 pt-0">
+                  <Form {...passwordForm}>
+                    <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-6">
+                      <FormField
+                        control={passwordForm.control}
+                        name="current_password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-gray-700">Current Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Enter your current password" {...field} className="h-10" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={passwordForm.control}
+                          name="new_password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium text-gray-700">New Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" placeholder="Enter new password" {...field} className="h-10" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={passwordForm.control}
+                          name="confirm_password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium text-gray-700">Confirm New Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" placeholder="Confirm new password" {...field} className="h-10" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <h4 className="text-sm font-medium text-blue-900 mb-2">Password Requirements:</h4>
+                        <ul className="text-sm text-blue-700 space-y-1">
+                          <li>• At least 8 characters long</li>
+                          <li>• Contains uppercase and lowercase letters</li>
+                          <li>• Contains at least one number</li>
+                        </ul>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                          Change Password
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Preferences */}
+            <motion.div variants={itemVariants}>
+              <Card className="shadow-lg border border-gray-200 bg-white">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-600 p-2 rounded-lg">
+                      <SettingsIcon className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-gray-900">Learning Preferences</CardTitle>
+                      <CardDescription className="text-gray-600">
+                        Customize your learning experience and notification settings
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 pt-0">
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-blue-100 p-2 rounded-lg">
+                          <Bell className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">Email Notifications</h4>
+                          <p className="text-sm text-gray-500">
+                            Receive email notifications about new practice cases, feedback, and learning updates
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={notifications}
+                        onCheckedChange={handleNotificationChange}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
           </div>
         </motion.div>
-
-        {/* Settings Sections */}
-        <div className="space-y-6">
-          {/* Profile Settings */}
-          <motion.div variants={itemVariants}>
-            <Card className="shadow-lg border border-gray-200 bg-white">
-              <CardHeader className="pb-3">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-blue-600 p-2 rounded-lg">
-                    <User className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-gray-900">Profile Information</CardTitle>
-                    <CardDescription className="text-gray-600">
-                      Update your personal information and display preferences
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormField
-                        control={profileForm.control}
-                        name="first_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium text-gray-700">First Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter your first name" {...field} className="h-10" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={profileForm.control}
-                        name="last_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium text-gray-700">Last Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter your last name" {...field} className="h-10" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <FormLabel className="text-sm font-medium text-gray-700">Email Address</FormLabel>
-                      <div className="flex items-center space-x-3">
-                        <Input
-                          type="email"
-                          value={userInfo?.email || ""}
-                          disabled
-                          className="h-10 bg-gray-50 text-gray-500"
-                        />
-                        <Badge variant="outline" className="text-xs">
-                          Verified
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-500">Email address cannot be changed</p>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                        Update Profile
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Security Settings */}
-          <motion.div variants={itemVariants}>
-            <Card className="shadow-lg border border-gray-200 bg-white">
-              <CardHeader className="pb-3">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-blue-600 p-2 rounded-lg">
-                    <Key className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-gray-900">Security Settings</CardTitle>
-                    <CardDescription className="text-gray-600">
-                      Manage your password and account security
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                <Form {...passwordForm}>
-                  <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-6">
-                    <FormField
-                      control={passwordForm.control}
-                      name="current_password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium text-gray-700">Current Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="Enter your current password" {...field} className="h-10" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormField
-                        control={passwordForm.control}
-                        name="new_password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium text-gray-700">New Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="Enter new password" {...field} className="h-10" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={passwordForm.control}
-                        name="confirm_password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-medium text-gray-700">Confirm New Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="Confirm new password" {...field} className="h-10" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-blue-900 mb-2">Password Requirements:</h4>
-                      <ul className="text-sm text-blue-700 space-y-1">
-                        <li>• At least 8 characters long</li>
-                        <li>• Contains uppercase and lowercase letters</li>
-                        <li>• Contains at least one number</li>
-                      </ul>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                        Change Password
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Preferences */}
-          <motion.div variants={itemVariants}>
-            <Card className="shadow-lg border border-gray-200 bg-white">
-              <CardHeader className="pb-3">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-blue-600 p-2 rounded-lg">
-                    <SettingsIcon className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-gray-900">Learning Preferences</CardTitle>
-                    <CardDescription className="text-gray-600">
-                      Customize your learning experience and notification settings
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-blue-100 p-2 rounded-lg">
-                        <Bell className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">Email Notifications</h4>
-                        <p className="text-sm text-gray-500">
-                          Receive email notifications about new practice cases, feedback, and learning updates
-                        </p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={notifications}
-                      onCheckedChange={handleNotificationChange}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Danger Zone */}
-          <motion.div variants={itemVariants}>
-            <Card className="shadow-lg border-red-200 bg-white">
-              <CardHeader className="pb-3">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-red-600 p-2 rounded-lg">
-                    <Trash2 className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-red-700">Account Management</CardTitle>
-                    <CardDescription className="text-gray-600">
-                      Irreversible actions that will affect your account permanently
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                <div className="space-y-4">
-                  <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                    <h4 className="font-medium text-red-900 mb-2">Account Deactivation</h4>
-                    <p className="text-sm text-red-700 mb-4">
-                      Deactivating your account will remove your access to the platform. Your practice data will be 
-                      retained for research purposes, but your personal information will be anonymized.
-                    </p>
-                    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                          Deactivate Account
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will deactivate your access to the platform. Your practice data will be retained for research purposes, but your personal information will be anonymized. This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDeleteAccount} className="bg-red-600 hover:bg-red-700">
-                            Yes, deactivate my account
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-      </motion.div>
-    </StudentClassAwareLayout>
+      </StudentClassAwareLayout>
+    </>
   );
 };
 

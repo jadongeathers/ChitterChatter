@@ -13,7 +13,7 @@ auth = Blueprint('auth', __name__)
 
 @auth.route('/register', methods=['POST'])
 def register():
-    """Register a new student after email verification."""
+    """Register a new user after email verification."""
     try:
         data = request.get_json()
 
@@ -21,7 +21,21 @@ def register():
         if not all(k in data for k in ["email", "password", "first_name", "last_name"]):
             return jsonify({"error": "Missing required fields"}), 400
 
-        # ✅ Check if email exists (decrypted comparison)
+        # Validate password security requirements
+        password = data["password"]
+        if len(password) < 8:
+            return jsonify({"error": "Password must be at least 8 characters long"}), 400
+        
+        if not any(c.isupper() for c in password):
+            return jsonify({"error": "Password must contain at least one uppercase letter"}), 400
+            
+        if not any(c.islower() for c in password):
+            return jsonify({"error": "Password must contain at least one lowercase letter"}), 400
+            
+        if not any(c.isdigit() for c in password):
+            return jsonify({"error": "Password must contain at least one number"}), 400
+
+        # Check if email exists (decrypted comparison)
         existing_user = next((u for u in User.query.all() if u.email == data["email"]), None)
 
         if existing_user:
@@ -32,17 +46,13 @@ def register():
         else:
             return jsonify({"error": "Institutional access required. Contact us to request institutional access."}), 403
 
-        # ✅ Ensure the access group is already assigned
-        if not user.access_group:
-            return jsonify({"error": "Access group was not assigned during email verification"}), 500
-
         # Update user information
         user.first_name = data["first_name"]
         user.last_name = data["last_name"]
         user.password_hash = generate_password_hash(data["password"])
-        user.is_registered = True  # ✅ Mark as registered
+        user.is_registered = True
         
-        # ✅ Assign random profile picture
+        # Assign random profile picture
         profile_pictures = [
             "apple.png", "blueberry.png", "lemon.png", "lychee.png", 
             "melon.png", "orange.png", "pear.png", "plum.png"
@@ -63,7 +73,6 @@ def register():
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "is_student": is_user_student(user),
-                "access_group": user.access_group,
                 "is_master": user.is_master,
                 "is_active": user.is_active,
                 "profile_picture": user.profile_picture,
@@ -79,7 +88,7 @@ def register():
 
 @auth.route('/login', methods=['POST'])
 def login():
-    """Login an existing user only if within allowed access period."""
+    """Login an existing user."""
     try:
         data = request.get_json()
 
@@ -107,7 +116,7 @@ def login():
         # Generate JWT token
         access_token = create_access_token(identity=str(user.id))
 
-        # First, check if user has consented
+        # Check if user has consented
         has_consented = getattr(user, 'has_consented', False)
         
         if not has_consented and not user.is_master:
@@ -119,50 +128,15 @@ def login():
                     "first_name": user.first_name,
                     "last_name": user.last_name,
                     "is_student": is_user_student(user),
-                    "access_group": user.access_group,
                     "is_master": user.is_master,
                     "is_active": user.is_active,
                     "profile_picture": user.profile_picture,
-                    "profile_picture_url": f"/images/profile-icons/{user.profile_picture}",
-                    "has_completed_survey": user.has_completed_survey
+                    "profile_picture_url": f"/images/profile-icons/{user.profile_picture}"
                 },
                 "needs_consent": True
             }), 200
 
-        # Second, check if they need to complete the survey (frontend will handle this check)
-        # Just include the has_completed_survey flag in the response
-
-        # Only now check access dates
-        now = datetime.now(timezone.utc)
-
-        if user.access_group == "A":
-            start_date = datetime(2025, 3, 10, 0, 0, 0, tzinfo=timezone.utc)
-            end_date = datetime(2025, 3, 30, 23, 59, 59, tzinfo=timezone.utc)
-        elif user.access_group == "B":
-            start_date = datetime(2025, 4, 7, 0, 0, 0, tzinfo=timezone.utc)
-            end_date = datetime(2025, 4, 27, 23, 59, 59, tzinfo=timezone.utc)
-        elif user.access_group == "All":
-            start_date = None
-            end_date = None  # "All" group has unlimited access
-        elif user.access_group == "Normal":
-            start_date = datetime(2025, 3, 10, 0, 0, 0, tzinfo=timezone.utc)
-            end_date = datetime(2025, 4, 27, 23, 59, 59, tzinfo=timezone.utc)
-        else:
-            return jsonify({"error": "Invalid access group"}), 500
-
-        # Restrict login if outside the allowed period, but only if they've already consented and completed the survey
-        access_restricted = False
-        access_message = ""
-        
-        if start_date and end_date:
-            if now < start_date:
-                access_restricted = True
-                access_message = f"Your access starts on {start_date.strftime('%B %d, %Y')}. We'll remind you then!"
-            elif now > end_date:
-                access_restricted = True
-                access_message = f"Your access ended on {end_date.strftime('%B %d, %Y')}. Contact jag569@cornell.edu if you have any questions."
-
-        # Return the full response with access restriction info if applicable
+        # Return successful login response
         response = {
             "access_token": access_token,
             "user": user.to_dict() if hasattr(user, 'to_dict') else {
@@ -171,20 +145,13 @@ def login():
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "is_student": is_user_student(user),
-                "access_group": user.access_group,
                 "is_master": user.is_master,
                 "is_active": user.is_active,
                 "profile_picture": user.profile_picture,
-                "profile_picture_url": f"/images/profile-icons/{user.profile_picture}",
-                "has_completed_survey": user.has_completed_survey
+                "profile_picture_url": f"/images/profile-icons/{user.profile_picture}"
             },
             "needs_consent": False
         }
-        
-        # Add access restriction info if applicable
-        if access_restricted:
-            response["access_restricted"] = True
-            response["access_message"] = access_message
         
         return jsonify(response), 200
 
@@ -247,6 +214,20 @@ def change_password():
         if not check_password_hash(user.password_hash, data["current_password"]):
             return jsonify({"error": "Current password is incorrect"}), 401
 
+        # Validate new password security requirements
+        new_password = data["new_password"]
+        if len(new_password) < 8:
+            return jsonify({"error": "Password must be at least 8 characters long"}), 400
+        
+        if not any(c.isupper() for c in new_password):
+            return jsonify({"error": "Password must contain at least one uppercase letter"}), 400
+            
+        if not any(c.islower() for c in new_password):
+            return jsonify({"error": "Password must contain at least one lowercase letter"}), 400
+            
+        if not any(c.isdigit() for c in new_password):
+            return jsonify({"error": "Password must contain at least one number"}), 400
+
         user.password_hash = generate_password_hash(data["new_password"])
         db.session.commit()
 
@@ -254,7 +235,7 @@ def change_password():
             "message": "Password changed successfully",
             "user": {
                 "id": user.id,
-                "email": user.email  # ✅ Ensures decrypted email is returned
+                "email": user.email
             }
         })
 
@@ -266,7 +247,7 @@ def change_password():
 
 @auth.route('/verify-email', methods=['POST'])
 def verify_email():
-    """Verify a student's email and assign an access group dynamically."""
+    """Verify a user's email."""
     try:
         data = request.get_json()
         email = data.get("email")
@@ -281,37 +262,8 @@ def verify_email():
             if user.is_registered:
                 return jsonify({"error": "Email already registered"}), 409
 
-            # Only set the access_group if it's not already set
-            if user.access_group is None:  # Ensure group is only assigned once
-                if not is_user_student(user):
-                    # Assign "All" access group to non-students (instructors)
-                    user.access_group = "All"
-                else:
-                    # # For students, assign access group dynamically within their section
-                    # section_students = User.query.filter_by(class_name=user.class_name, section=user.section).all()
-                    # group_a_count = sum(1 for s in section_students if s.access_group == "A")
-                    # group_b_count = sum(1 for s in section_students if s.access_group == "B")
-
-                    # # Flip a coin but correct imbalance if necessary
-                    # if group_a_count == group_b_count:
-                    #     access_group = random.choice(["A", "B"])  # True random
-                    # elif group_a_count < group_b_count:
-                    #     access_group = "A"
-                    # else:
-                    #     access_group = "B"
-
-                    access_group = "Normal" 
-
-                    user.access_group = access_group
-                
-                db.session.commit()
-                current_app.logger.info(f"Access group for {email} assigned: {user.access_group}")
-            else:
-                current_app.logger.info(f"User {email} already has access group: {user.access_group}")
-
             return jsonify({
                 "message": "Email verified, proceed to registration",
-                "access_group": user.access_group,
                 "is_student": is_user_student(user),
             }), 200
 
@@ -339,8 +291,8 @@ def update_profile():
             return jsonify({"error": "Missing required fields"}), 400
 
         # Update user profile information
-        user.first_name = data["first_name"]  # This uses the property setter which encrypts
-        user.last_name = data["last_name"]    # This uses the property setter which encrypts
+        user.first_name = data["first_name"]
+        user.last_name = data["last_name"]
         
         db.session.commit()
 
