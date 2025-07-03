@@ -72,7 +72,7 @@ const Feedback: React.FC = () => {
     if (userRole === "instructor") {
       navigate("/instructor/lessons");
     } else {
-      navigate("/practice");
+      navigate("/student/practice");
     }
   };
 

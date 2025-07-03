@@ -211,7 +211,7 @@ const RecentConversation: React.FC<RecentConversationProps> = ({
                 </p>
                 <Button 
                   className="bg-green-600 hover:bg-green-700 text-white"
-                  onClick={() => navigate('/practice')}
+                  onClick={() => navigate('/student/practice')}
                 >
                   {emptyState.buttonIcon}
                   {emptyState.buttonText}

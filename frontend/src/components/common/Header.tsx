@@ -78,7 +78,7 @@ const Header = ({ currentRole, userName, profilePicture, onProfilePictureChange 
     { icon: MessageCircle, label: "Practice", path: "/student/practice" },
     { icon: BarChart2, label: "Progress", path: "/student/progress" },
     { icon: Settings, label: "Account Settings", path: "/student/settings" },
-    { icon: QuestionMarkCircledIcon, label: "Help & Feedback", path: "/feedback-help" },
+    { icon: QuestionMarkCircledIcon, label: "Help & Feedback", path: "/student/feedback-help" },
   ];
 
   const instructorMenuItems = [

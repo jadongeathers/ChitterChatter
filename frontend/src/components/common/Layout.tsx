@@ -36,7 +36,9 @@ const Layout: React.FC = () => {
 
   // This logic to hide UI elements on certain pages is correct.
   const hideSidebar = location.pathname === "/login" || location.pathname === "/register";
-  const hideFeedbackButton = location.pathname === "/feedback-help";
+  const hideFeedbackButton = 
+    location.pathname === "/student/feedback-help" || 
+    location.pathname === "/instructor/feedback-help";
 
   // This blocking check is REMOVED. It was the cause of the blank screen issue.
   // The ProtectedRoute component now handles redirects for unauthenticated users.
@@ -84,8 +86,15 @@ const Layout: React.FC = () => {
   };
 
   const handleGoToHelpPage = () => {
-    navigate("/feedback-help");
-    setFeedbackOpen(false);
+    if (role === "student") {
+      navigate("/student/feedback-help");
+    } else if (role === "instructor") {
+      navigate("/instructor/feedback-help");
+    }
+    // If the role is 'master' or null, this function will do nothing,
+    // which is safe. You can add an 'else' case if master users get a help page later.
+    
+    setFeedbackOpen(false); // Close the dialog after navigating
   };
 
   return (

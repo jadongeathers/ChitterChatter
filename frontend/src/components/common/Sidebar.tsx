@@ -70,7 +70,7 @@ const UpdatedSidebar: React.FC<SidebarProps> = ({ className }) => {
     { icon: MessageCircle, label: "Practice", path: "/student/practice", id: "practice" },
     { icon: BarChart2, label: "Progress", path: "/student/progress", id: "progress" },
     { icon: Settings, label: "Account Settings", path: "/student/settings", id: "settings" },
-    { icon: QuestionMarkCircledIcon, label: "Help & Feedback", path: "/feedback-help", id: "feedback-help" },
+    { icon: QuestionMarkCircledIcon, label: "Help & Feedback", path: "/student/feedback-help", id: "feedback-help" },
   ];
 
   const instructorMenuItems: MenuItem[] = [

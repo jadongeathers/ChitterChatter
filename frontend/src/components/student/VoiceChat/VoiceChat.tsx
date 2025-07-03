@@ -133,7 +133,7 @@ const VoiceChat: React.FC = () => {
       if (userRole === "instructor") {
         navigate("/instructor/lessons");
       } else {
-        navigate("/practice");
+        navigate("/student/practice");
       }
     }
   };
@@ -349,7 +349,7 @@ const cancelSession = async () => {
   if (userRole === "instructor") {
     navigate("/instructor/lessons");
   } else {
-    navigate("/practice");
+    navigate("/student/practice");
   }
 };
 

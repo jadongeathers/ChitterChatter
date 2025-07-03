@@ -74,7 +74,7 @@ const LatestAIFeedback: React.FC<LatestAIFeedbackProps> = ({ feedback }) => {
                 <Button 
                   variant="outline" 
                   className="w-full bg-white hover:bg-purple-50 border-purple-200 text-purple-700 hover:text-purple-800"
-                  onClick ={() => navigate('/progress')}
+                  onClick ={() => navigate('/student/progress')}
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   View Full Feedback History
@@ -95,7 +95,7 @@ const LatestAIFeedback: React.FC<LatestAIFeedbackProps> = ({ feedback }) => {
                 </p>
                 <Button 
                   className="bg-purple-600 hover:bg-purple-700 text-white"
-                  onClick={() => {navigate('/practice')}}
+                  onClick={() => {navigate('/student/practice')}}
                 >
                   <Brain className="h-4 w-4 mr-2" />
                   Start Your First Practice

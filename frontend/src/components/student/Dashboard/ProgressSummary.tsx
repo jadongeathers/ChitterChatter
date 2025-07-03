@@ -32,7 +32,7 @@ const ProgressSummary: React.FC<ProgressSummaryProps> = ({
           Your Progress
         </h2>
         <button 
-          onClick={() => navigate('/progress')}
+          onClick={() => navigate('/student/progress')}
           className="text-primary text-sm hover:underline"
         >
           View details

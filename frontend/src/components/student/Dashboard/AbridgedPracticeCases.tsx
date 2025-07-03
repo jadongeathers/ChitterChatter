@@ -62,7 +62,7 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
   };
 
   const handleViewAllCases = () => {
-    navigate("/practice");
+    navigate("/student/practice");
   };
 
   // Animation variants
