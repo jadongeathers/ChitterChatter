@@ -18,7 +18,6 @@ import Feedback from "@/pages/student/Feedback";
 import Progress from "@/pages/student/Progress";
 import Settings from "@/pages/student/Settings";
 import ReviewCase from "@/pages/instructor/ReviewCase";
-import ReviewFeedback from "./pages/instructor/ReviewFeedback";
 import Lessons from "@/pages/instructor/Lessons";
 import Students from "@/pages/instructor/Students";
 import Analytics from "./pages/instructor/Analytics";
@@ -106,7 +105,6 @@ const AppRoutes = () => {
           <Route path="/instructor/lessons" element={<Lessons />} />
           <Route path="/instructor/review/:caseId" element={<ReviewCase />} />
           <Route path="/instructor/review/new" element={<ReviewCase isNew />} />
-          <Route path="/instructor/feedback/:caseId" element={<ReviewFeedback />} />
           <Route path="/instructor/students" element={<Students />} />
           <Route path="/instructor/analytics" element={<Analytics />} />
           <Route path="/instructor/settings" element={<InstructorSettings />} />
