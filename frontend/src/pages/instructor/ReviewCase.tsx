@@ -125,6 +125,19 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     setHasUnsavedChanges(true);
   };
 
+  // Check for success message from URL params (for new case creation)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const successType = urlParams.get('success');
+    
+    if (successType === 'draft_saved') {
+      setStatusMessage({ type: 'success', message: "Draft saved successfully!" });
+      
+      // Clean up the URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
 
   // Initialize data
   useEffect(() => {
@@ -145,8 +158,8 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         class_id: classId,
         title: "",
         description: "",
-        min_time: 0,
-        max_time: 0,
+        min_time: 60,  // 1 minute in seconds
+        max_time: 1200, // 20 minutes in seconds
         accessible_on: "",
         voice: "verse",
         language_code: "en",
@@ -341,10 +354,6 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         published: false
       };
 
-      if (isNew && !payload.class_id) {
-        throw new Error("Class ID is required");
-      }
-
       const response = await fetchWithAuth(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -356,15 +365,25 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         throw new Error(errorData.error || "Failed to save draft");
       }
 
-      setStatusMessage({ type: 'success', message: "Draft saved successfully!" });
-      setHasUnsavedChanges(false);
-
       if (isNew) {
-        const data = await response.json();
-        // FIX: Navigate to the new URL. This forces a reload into "edit" mode.
-        navigate(`/instructor/feedback/${data.id}`, { replace: true });
+        // Show "Creating new case..." message first
+        setStatusMessage({ type: 'success', message: "Creating new case..." });
+        
+        // **FIX:** When creating, the API returns the case object directly.
+        const newCase = await response.json();
+        setHasUnsavedChanges(false);
+        
+        // Wait 1.5 seconds to show the creating message, then navigate
+        setTimeout(() => {
+          // Navigate to the new page with a success message in the URL
+          navigate(`/instructor/review/${newCase.id}?success=draft_saved`, { replace: true });
+        }, 1500);
       } else {
-        // FIX: Update the local state with the response from the server.
+        // For existing cases, show success immediately
+        setStatusMessage({ type: 'success', message: "Draft saved successfully!" });
+        setHasUnsavedChanges(false);
+        
+        // **FIX:** When updating, the API nests the object under a 'case' key.
         const { case: updatedCase } = await response.json();
         setPracticeCase(updatedCase);
       }
@@ -504,11 +523,16 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
   };
 
   if (isLoading) {
+    // Check if it's a new case to show a specific loading message.
+    const loadingTitle = isNew ? "Creating New Case" : "Loading...";
+    const loadingDescription = isNew ? "Getting the editor ready for your new case." : "Loading practice case...";
+    const loadingMessage = isNew ? "Creating new case..." : "Loading practice case...";
+
     return (
-      <ClassAwareLayout title="Loading..." description="Loading practice case...">
+      <ClassAwareLayout title={loadingTitle} description={loadingDescription}>
         <div className="flex justify-center items-center h-32">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading practice case...</span>
+          <span className="ml-3 text-gray-600">{loadingMessage}</span>
         </div>
       </ClassAwareLayout>
     );
@@ -711,7 +735,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
                         <Input
                           id="min-time"
                           type="number"
-                          min="0"
+                          min="1"
                           max="30"
                           value={practiceCase ? Math.floor(practiceCase.min_time / 60) : 0}
                           onChange={(e) => {
@@ -733,7 +757,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
                         <Input
                           id="max-time"
                           type="number"
-                          min="0"
+                          min="1"
                           max="30"
                           value={practiceCase ? Math.floor(practiceCase.max_time / 60) : 0}
                           onChange={(e) => {
