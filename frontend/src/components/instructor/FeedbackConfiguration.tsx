@@ -76,14 +76,14 @@ const getPredefinedSections = (): FeedbackSection[] => [
     description: "Appropriateness and variety of vocabulary usage",
     text: "Provide suggestions on better vocabulary usage to enhance clarity and precision."
   },
-  {
-    id: "pronunciation",
-    label: "Pronunciation & Clarity",
-    category: "language",
-    isChecked: false,
-    description: "Speech clarity and pronunciation feedback",
-    text: "Comment on pronunciation clarity and suggest improvements for better articulation where applicable."
-  }
+  // {
+  //   id: "pronunciation",
+  //   label: "Pronunciation & Clarity",
+  //   category: "language",
+  //   isChecked: false,
+  //   description: "Speech clarity and pronunciation feedback",
+  //   text: "Comment on pronunciation clarity and suggest improvements for better articulation where applicable."
+  // }
 ];
 
 const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
