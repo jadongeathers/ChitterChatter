@@ -34,6 +34,10 @@ export const setupWebRTCConnection = async (
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     });
 
+    // Track pause state
+    let isPaused = false;
+    let pausedAudioQueue: any[] = [];
+
     // Handle incoming audio stream from OpenAI
     pc.ontrack = (event) => {
       console.log("Received audio track");
@@ -68,6 +72,16 @@ export const setupWebRTCConnection = async (
         console.log("Message type:", message.type);
         console.log(message);
 
+        // If conversation is paused, queue certain messages instead of processing them
+        if (isPaused) {
+          // Queue audio-related messages during pause
+          if (message.type.includes('audio') || message.type.includes('speaking')) {
+            pausedAudioQueue.push(message);
+            console.log("Queued message during pause:", message.type);
+            return;
+          }
+        }
+
         // Handle transcription message:
         if (
           message.type === "conversation.item.input_audio_transcription.completed" &&
@@ -95,7 +109,7 @@ export const setupWebRTCConnection = async (
           });
         }
         
-        // Handle speaking state
+        // Handle speaking state (only if not paused)
         if (message.type === "response.output_audio.speaking") {
           onMessage({
             type: "assistant",
@@ -115,6 +129,59 @@ export const setupWebRTCConnection = async (
         console.error("❌ Error parsing message:", err);
       }
     };
+
+    // Function to handle pause/resume from the application
+    const handlePauseControl = (paused: boolean) => {
+      isPaused = paused;
+      
+      if (paused) {
+        console.log("🔇 Conversation paused - muting audio tracks");
+        // Mute local audio tracks
+        localStream.getAudioTracks().forEach(track => {
+          track.enabled = false;
+        });
+        
+        // Send pause signal to OpenAI if supported
+        try {
+          if (dataChannel.readyState === 'open') {
+            const pauseMessage = {
+              type: 'conversation.pause',
+              timestamp: Date.now()
+            };
+            dataChannel.send(JSON.stringify(pauseMessage));
+          }
+        } catch (error) {
+          console.warn("Could not send pause signal to OpenAI:", error);
+        }
+      } else {
+        console.log("🔊 Conversation resumed - unmuting audio tracks");
+        // Unmute local audio tracks
+        localStream.getAudioTracks().forEach(track => {
+          track.enabled = true;
+        });
+        
+        // Send resume signal to OpenAI if supported
+        try {
+          if (dataChannel.readyState === 'open') {
+            const resumeMessage = {
+              type: 'conversation.resume',
+              timestamp: Date.now()
+            };
+            dataChannel.send(JSON.stringify(resumeMessage));
+          }
+        } catch (error) {
+          console.warn("Could not send resume signal to OpenAI:", error);
+        }
+        
+        // Clear the queued messages when resuming
+        // Note: You might want to process some of these instead of clearing
+        console.log(`Clearing ${pausedAudioQueue.length} queued messages`);
+        pausedAudioQueue = [];
+      }
+    };
+
+    // Expose pause control function
+    (dataChannel as any).pauseControl = handlePauseControl;
 
     // Create and send offer
     const offer = await pc.createOffer();

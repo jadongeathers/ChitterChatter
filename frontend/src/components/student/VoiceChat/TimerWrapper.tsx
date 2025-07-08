@@ -8,7 +8,9 @@ interface TimerWrapperProps {
   onTimeUp: () => void;
   onTick?: (elapsed: number) => void;
   startTimer: boolean;
-  isEndingConversation?: boolean; // Add this prop
+  isEndingConversation?: boolean;
+  isPaused?: boolean;
+  totalPausedTime?: number;
 }
 
 const TimerWrapper: React.FC<TimerWrapperProps> = ({ 
@@ -17,7 +19,9 @@ const TimerWrapper: React.FC<TimerWrapperProps> = ({
   onTimeUp, 
   onTick, 
   startTimer, 
-  isEndingConversation = false 
+  isEndingConversation = false,
+  isPaused = false,
+  totalPausedTime = 0
 }) => {
   return (
     <div className={`absolute top-4 right-4 ${isEndingConversation ? 'z-40' : 'z-50'}`}>
@@ -30,6 +34,8 @@ const TimerWrapper: React.FC<TimerWrapperProps> = ({
             onTimeUp={onTimeUp} 
             onTick={onTick}
             startTimer={startTimer}
+            isPaused={isPaused}
+            totalPausedTime={totalPausedTime}
           />
         </div>
       </div>

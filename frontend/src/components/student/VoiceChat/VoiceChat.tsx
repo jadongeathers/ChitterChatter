@@ -20,7 +20,6 @@ interface PracticeCase {
   max_time: number; // in seconds
 }
 
-
 const VoiceChat: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -43,9 +42,17 @@ const VoiceChat: React.FC = () => {
   const [userRole, setUserRole] = useState<"student" | "instructor" | null>(null);
   const [showConversationArea, setShowConversationArea] = useState(true);
   const [isEndingConversation, setIsEndingConversation] = useState(false);
+  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const wasAiSpeakingOnPauseRef = useRef(false);
+
+  // New pause-related state
+  const [isPaused, setIsPaused] = useState(false);
+  const [pauseStartTime, setPauseStartTime] = useState<number | null>(null);
+  const [totalPausedTime, setTotalPausedTime] = useState(0);
 
   const conversationIdRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
 
   // Centralized function to clean up all media resources
   const cleanupMediaResources = useCallback(() => {
@@ -86,7 +93,71 @@ const VoiceChat: React.FC = () => {
       });
       setRemoteStream(null);
     }
+
+    // Clear data channel reference
+    dataChannelRef.current = null;
   }, [pc, localStream, remoteStream]);
+
+  // Function to pause/resume microphone
+  const toggleMicrophone = (enable: boolean) => {
+    if (localStream) {
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = enable;
+      });
+    }
+  };
+
+  // Function to send pause/resume signal via WebRTC
+  const sendPauseSignal = async (paused: boolean) => {
+    try {
+      if (dataChannelRef.current && (dataChannelRef.current as any).pauseControl) {
+        (dataChannelRef.current as any).pauseControl(paused);
+        console.log(`Sent ${paused ? 'pause' : 'resume'} signal via WebRTC`);
+      }
+    } catch (error) {
+      console.error('Error sending pause signal:', error);
+    }
+  };
+
+  // Pause conversation function
+  const pauseConversation = async () => {
+    if (isPaused) return;
+    
+    setIsPaused(true);
+    setPauseStartTime(Date.now());
+    
+    // Disable microphone
+    toggleMicrophone(false);
+    
+    // Send pause signal to backend
+    await sendPauseSignal(true);
+    
+    setStatus("Paused");
+    console.log("Conversation paused");
+  };
+
+  // Resume conversation function
+  const resumeConversation = async () => {
+    if (!isPaused) return;
+    
+    // Calculate pause duration and add to total
+    if (pauseStartTime) {
+      const pauseDuration = Math.floor((Date.now() - pauseStartTime) / 1000);
+      setTotalPausedTime(prev => prev + pauseDuration);
+      setPauseStartTime(null);
+    }
+    
+    setIsPaused(false);
+    
+    // Re-enable microphone
+    toggleMicrophone(true);
+    
+    // Send resume signal to backend
+    await sendPauseSignal(false);
+    
+    setStatus("Connected");
+    console.log("Conversation resumed");
+  };
 
   // Monitor authentication status changes (logout detection)
   useEffect(() => {
@@ -163,7 +234,6 @@ const VoiceChat: React.FC = () => {
   useEffect(() => {
     fetchUserRole();
   }, []);
-  
 
   // Handle dynamic loading animation for feedback
   useEffect(() => {
@@ -214,14 +284,20 @@ const VoiceChat: React.FC = () => {
     (message: { type: string; text: string; is_final?: boolean; is_speaking?: boolean }) => {
       if (!conversationIdRef.current) return;
 
+      // Track the AI's speaking state
+      if (typeof message.is_speaking === "boolean") {
+        setIsAiSpeaking(message.is_speaking);
+      }
+
+      // Handle saving user and assistant messages
       if (message.type === "speech") {
         saveMessage("user", message.text);
-      } else if (message.type === "assistant") {
+      } else if (message.type === "assistant" && message.text) {
         setCurrentMessage(message.text);
         saveMessage("assistant", message.text);
       }
     },
-    []
+    [] // Keep dependencies minimal
   );
 
   const saveMessage = async (role: string, text: string) => {
@@ -246,6 +322,7 @@ const VoiceChat: React.FC = () => {
     setIsSessionStarted(true);
     setTimeElapsed(0);
     setStatus("Connecting...");
+    setTotalPausedTime(0); // Reset pause time
   
     try {
       const userId = await fetchUserId();
@@ -270,6 +347,7 @@ const VoiceChat: React.FC = () => {
   
       setLocalStream(stream);
       setPc(peerConnection);
+      dataChannelRef.current = dataChannel; // Store data channel reference
   
       setStatus("Connected");
     } catch (err) {
@@ -290,69 +368,67 @@ const VoiceChat: React.FC = () => {
     }
   };
   
-  
-const stopSession = async () => {
-  setIsEndingConversation(true);
+  const stopSession = async () => {
+    setIsEndingConversation(true);
 
-  await new Promise(resolve => setTimeout(resolve, 100)); // Ensure UI updates before API call
+    await new Promise(resolve => setTimeout(resolve, 100)); // Ensure UI updates before API call
 
-  // Use centralized cleanup function
-  cleanupMediaResources();
-  
-  if (conversationIdRef.current) {
-    // Begin exit animation for the conversation area
-    setIsExiting(true);
-    setTimeout(async () => {
-      setShowConversationArea(false);
-      setIsEndingConversation(false);
-      setIsWaitingForFeedback(true);
+    // Use centralized cleanup function
+    cleanupMediaResources();
+    
+    if (conversationIdRef.current) {
+      // Begin exit animation for the conversation area
+      setIsExiting(true);
+      setTimeout(async () => {
+        setShowConversationArea(false);
+        setIsEndingConversation(false);
+        setIsWaitingForFeedback(true);
+        try {
+          const response = await fetchWithAuth(
+            `/api/conversations/conversation/${conversationIdRef.current}/end`,
+            { method: "POST" }
+          );
+          await response.json();
+          // Keep the waiting view visible and delay navigation for a smooth transition
+          setTimeout(() => {
+            navigate(`/feedback/${conversationIdRef.current}`);
+          }, 1000); // additional delay to let the waiting view settle
+        } catch (err) {
+          console.error("Error ending conversation:", err);
+        }
+      }, 600); // Duration matches the exit animation
+    }    
+  };
+
+  const cancelSession = async () => {
+    // Use centralized cleanup function
+    cleanupMediaResources();
+
+    // Ensure conversationIdRef.current exists before making a request
+    if (conversationIdRef.current) {
       try {
-        const response = await fetchWithAuth(
-          `/api/conversations/conversation/${conversationIdRef.current}/end`,
-          { method: "POST" }
-        );
-        await response.json();
-        // Keep the waiting view visible and delay navigation for a smooth transition
-        setTimeout(() => {
-          navigate(`/feedback/${conversationIdRef.current}`);
-        }, 1000); // additional delay to let the waiting view settle
-      } catch (err) {
-        console.error("Error ending conversation:", err);
+        const response = await fetchWithAuth(`/api/conversations/conversation/${conversationIdRef.current}/end`, {
+          method: "POST",
+        });
+
+        if (!response.ok) throw new Error("Failed to update conversation end time");
+        
+        console.log("Conversation canceled successfully.");
+      } catch (error) {
+        console.error("Error canceling conversation:", error);
       }
-    }, 600); // Duration matches the exit animation
-  }    
-};
-
-const cancelSession = async () => {
-  // Use centralized cleanup function
-  cleanupMediaResources();
-
-  // Ensure conversationIdRef.current exists before making a request
-  if (conversationIdRef.current) {
-    try {
-      const response = await fetchWithAuth(`/api/conversations/conversation/${conversationIdRef.current}/end`, {
-        method: "POST",
-      });
-
-      if (!response.ok) throw new Error("Failed to update conversation end time");
-      
-      console.log("Conversation canceled successfully.");
-    } catch (error) {
-      console.error("Error canceling conversation:", error);
     }
-  }
-  
-  // Add a small delay to ensure user sees the "Ending conversation" message
-  await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Add a small delay to ensure user sees the "Ending conversation" message
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // Redirect user based on role
-  if (userRole === "instructor") {
-    navigate("/instructor/lessons");
-  } else {
-    navigate("/student/practice");
-  }
-};
-
+    // Redirect user based on role
+    if (userRole === "instructor") {
+      navigate("/instructor/lessons");
+    } else {
+      navigate("/student/practice");
+    }
+  };
 
   const handleStopClick = () => {
     if (timeElapsed < (practiceCase?.min_time ?? 30)) {
@@ -424,6 +500,11 @@ const cancelSession = async () => {
                 setTimeElapsed(elapsed);
               }}
               isEndingConversation={isEndingConversation}
+              // New pause props
+              isPaused={isPaused}
+              onPause={pauseConversation}
+              onResume={resumeConversation}
+              totalPausedTime={totalPausedTime}
             />
           </motion.div>
         )

@@ -8,6 +8,8 @@ interface TimerProps {
   onWarning?: () => void;
   onTick?: (elapsed: number) => void;
   startTimer: boolean;
+  isPaused?: boolean;
+  totalPausedTime?: number;
 }
 
 const Timer: React.FC<TimerProps> = ({
@@ -18,6 +20,8 @@ const Timer: React.FC<TimerProps> = ({
   onTimeUp,
   onTick,
   startTimer,
+  isPaused = false,
+  totalPausedTime = 0,
 }) => {
   const [elapsed, setElapsed] = useState(0);
   const [warningShown, setWarningShown] = useState(false);
@@ -25,90 +29,77 @@ const Timer: React.FC<TimerProps> = ({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // This effect now handles all timer logic based on props
     if (!startTimer) {
-      // Reset when timer is stopped
+      // Reset everything if the timer shouldn't be running
       startTimeRef.current = null;
       setElapsed(0);
       setWarningShown(false);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
       return;
     }
 
-    // Set start time when timer begins
     if (startTimeRef.current === null) {
       startTimeRef.current = Date.now();
     }
 
+    // If paused, just clear the interval and do nothing else
+    if (isPaused) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      return;
+    }
+    
     const updateTimer = () => {
       if (startTimeRef.current === null) return;
       
       const now = Date.now();
-      const elapsedSeconds = Math.floor((now - startTimeRef.current) / 1000);
+      const totalElapsedMs = now - startTimeRef.current;
+      // ✅ FIX: The calculation now directly and reliably uses the prop from the parent
+      const elapsedSeconds = Math.floor(totalElapsedMs / 1000) - totalPausedTime;
       
-      setElapsed(prevElapsed => {
-        // Only update if the elapsed time has actually changed
-        if (prevElapsed === elapsedSeconds) return prevElapsed;
-        
-        console.log("elapsed:", elapsedSeconds);
-
-        // Notify when minimum time is reached
-        if (prevElapsed < minTime && elapsedSeconds >= minTime) {
-          console.log("Timer: minimum time reached");
-          onMinReached && onMinReached();
-        }
-
-        // Show warning if only 30 seconds remain
-        if (!warningShown && maxTime - elapsedSeconds <= 30) {
-          console.log("Timer: warning! Only 30 seconds remain.");
-          onWarning && onWarning();
-          setWarningShown(true);
-        }
-
-        // When maxTime is reached, call onTimeUp and stop the timer
-        if (elapsedSeconds >= maxTime) {
-          console.log("Timer: max time reached");
-          onTimeUp();
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-          return maxTime;
-        }
-
-        return elapsedSeconds;
-      });
+      setElapsed(Math.max(0, elapsedSeconds));
     };
 
-    // Update immediately
-    updateTimer();
+    updateTimer(); // Update immediately on start or resume
+    intervalRef.current = setInterval(updateTimer, 1000); // Set interval for subsequent ticks
 
-    // Set up interval
-    intervalRef.current = setInterval(updateTimer, 1000);
-
+    // Cleanup function to clear the interval
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [startTimer, minTime, maxTime, onMinReached, onWarning, onTimeUp, warningShown]);
+  }, [startTimer, isPaused, totalPausedTime]); // Re-run effect when any of these props change
 
-  // Separate effect to notify parent after elapsed state updates
   useEffect(() => {
-    if (onTick) {
-      onTick(elapsed);
+    // This separate effect handles the side-effects of the elapsed time changing
+    if (!startTimer) return;
+
+    onTick?.(elapsed);
+
+    if (elapsed >= minTime) {
+      onMinReached?.();
     }
-  }, [elapsed, onTick]);
+
+    if (!warningShown && maxTime - elapsed <= 30 && elapsed > 0) {
+      onWarning?.();
+      setWarningShown(true);
+    }
+
+    if (elapsed >= maxTime) {
+      onTimeUp();
+    }
+  }, [elapsed, startTimer, minTime, maxTime, onMinReached, onWarning, onTimeUp, onTick, warningShown]);
 
   // Format the elapsed time as MM:SS
   const minutes = Math.floor(elapsed / 60);
   const seconds = elapsed % 60;
   const formattedTime = `${minutes}:${seconds < 10 ? "0" + seconds : seconds}`;
 
-  return <div className="text-lg font-bold">{formattedTime}</div>;
+  return (
+    <div className="text-lg font-bold">
+      {formattedTime}
+      {isPaused && <span className="ml-1 text-sm">⏸</span>}
+    </div>
+  );
 };
 
 export default Timer;

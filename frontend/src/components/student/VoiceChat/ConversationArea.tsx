@@ -2,6 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Pause, Play } from "lucide-react";
 import AISpeech from "./AISpeech";
 import TimerWrapper from "./TimerWrapper";
 
@@ -20,6 +21,11 @@ interface ConversationAreaProps {
   canStop: boolean;
   onTick?: (elapsed: number) => void;
   isEndingConversation?: boolean;
+  // New pause props
+  isPaused: boolean;
+  onPause: () => void;
+  onResume: () => void;
+  totalPausedTime: number;
 }
 
 const ConversationArea: React.FC<ConversationAreaProps> = ({
@@ -36,9 +42,13 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
   onTimerUp,
   canStop,
   onTick,
-  isEndingConversation
+  isEndingConversation,
+  isPaused,
+  onPause,
+  onResume,
+  totalPausedTime
 }) => {
-  console.log("ConversationArea props:", { timerMin, timerMax, timeElapsed, canStop });
+  console.log("ConversationArea props:", { timerMin, timerMax, timeElapsed, canStop, isPaused });
 
   return (
     <Card className="w-full max-w-2xl p-4 relative">
@@ -47,7 +57,7 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
         <div className="flex flex-col items-end gap-2">
           <div
             className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${
-              status === "Connected"
+              status === "Connected" || status === "Paused"
                 ? "bg-green-100 text-green-800"
                 : status === "Error"
                 ? "bg-red-100 text-red-800"
@@ -56,7 +66,7 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
           >
             <span
               className={`w-2 h-2 rounded-full ${
-                status === "Connected"
+                status === "Connected" || status === "Paused"
                   ? "bg-green-500"
                   : status === "Error"
                   ? "bg-red-500"
@@ -70,8 +80,10 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
             maxTime={timerMax} 
             onTimeUp={onTimerUp} 
             onTick={onTick}
-            startTimer={status === "Connected"} // Timer only starts when status is Connected
-            isEndingConversation={isEndingConversation} 
+            startTimer={status === "Connected" || status === "Paused" || status === "Resuming..."} // Timer only starts when status is Connected
+            isEndingConversation={isEndingConversation}
+            isPaused={isPaused}
+            totalPausedTime={totalPausedTime}
           />
         </div>
       </CardHeader>
@@ -83,7 +95,7 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
               <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0">
                 AI
               </div>
-              {remoteStream && <AISpeech stream={remoteStream} />}
+              {remoteStream && <AISpeech stream={remoteStream} isPaused={isPaused} />}
             </div>
             <Button variant="ghost" size="sm" onClick={onToggleShowHint} className="border">
               {showHint ? "Hide" : "Show"} Hints
@@ -110,15 +122,51 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
           )}
         </Card>
 
-        {status === "Connected" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center mt-4">
+        {(status === "Connected" || status === "Paused") && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center gap-3 mt-4">
+            {/* Pause/Resume Button */}
+            <Button
+              onClick={isPaused ? onResume : onPause}
+              variant={isPaused ? "default" : "outline"}
+              className="flex items-center gap-2"
+            >
+              {isPaused ? (
+                <>
+                  <Play className="w-4 h-4" />
+                  Resume
+                </>
+              ) : (
+                <>
+                  <Pause className="w-4 h-4" />
+                  Pause
+                </>
+              )}
+            </Button>
+
+            {/* Stop Button */}
             <Button
               onClick={stopSession}
               variant="destructive"
               className={!canStop ? "opacity-50" : ""}
             >
-              Stop Voice Chat
+              End Conversation
             </Button>
+          </motion.div>
+        )}
+
+        {/* Pause notification */}
+        {isPaused && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg text-center"
+          >
+            <p className="text-gray-800 font-medium">
+              Conversation is paused. The AI cannot hear you.
+            </p>
+            <p className="text-gray-600 text-sm mt-1">
+              Click Resume to continue the conversation.
+            </p>
           </motion.div>
         )}
 
