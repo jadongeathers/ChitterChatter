@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { fetchWithAuth } from "@/utils/api";
 import PracticeCaseCard from "@/components/instructor/PracticeCaseCard";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,6 +34,7 @@ const Lessons: React.FC = () => {
   const [sortBy, setSortBy] = useState("newest");
   const [filterBy, setFilterBy] = useState("all");
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Fetch practice cases from API
   const fetchPracticeCases = async () => {
@@ -57,6 +58,13 @@ const Lessons: React.FC = () => {
       setTimeout(() => setIsLoading(false), 300);
     }
   };
+
+  useEffect(() => {
+    if (location.state?.refresh) {
+      fetchPracticeCases();
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]); 
 
   // Filter and sort cases based on current filters
   const filterAndSortCases = () => {

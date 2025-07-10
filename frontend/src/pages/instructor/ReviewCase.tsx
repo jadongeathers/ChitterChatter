@@ -136,6 +136,12 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       // Clean up the URL
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
+    } else if (successType === 'published') {
+      setStatusMessage({ type: 'success', message: "Practice case published successfully!" });
+      
+      // Clean up the URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
     }
   }, []);
 
@@ -158,8 +164,8 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         class_id: classId,
         title: "",
         description: "",
-        min_time: 60,  // 1 minute in seconds
-        max_time: 1200, // 20 minutes in seconds
+        min_time: 0,
+        max_time: 0,
         accessible_on: "",
         voice: "verse",
         language_code: "en",
@@ -421,7 +427,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
 
       const payload: any = {
         ...practiceCase,
-        feedback_prompt: feedbackPrompt, // <-- FIX: Changed from feedbackPrompt
+        feedback_prompt: feedbackPrompt, 
         is_draft: false,
         published: true
       };
@@ -436,18 +442,26 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to publish practice case");
       }
-
-      setStatusMessage({ type: 'success', message: "Practice case published successfully!" });
-      setHasUnsavedChanges(false);
-
+      
       if (isNew) {
-        const data = await response.json();
-        // FIX: Navigate to the new URL after publishing a new case.
-        navigate(`/instructor/feedback/${data.id}`);
+        // This is the flow for a brand new case
+        setStatusMessage({ type: 'success', message: "Publishing new case..." });
+
+        const newCase = await response.json();
+        setHasUnsavedChanges(false);
+
+        setTimeout(() => {
+          // Navigate to the new URL and pass the trigger for the final message
+          navigate(`/instructor/review/${newCase.id}?success=published`, { replace: true });
+        }, 1500);
+
       } else {
-        // FIX: Update local state with the full object from the response.
+        // This is for updating an existing case
+        setStatusMessage({ type: 'success', message: "Practice case published successfully!" });
+        setHasUnsavedChanges(false);
         const { case: updatedCase } = await response.json();
         setPracticeCase(updatedCase);
+        sessionStorage.setItem('lessonsPageNeedsRefresh', 'true');
       }
     } catch (error) {
       console.error("Error publishing practice case:", error);
