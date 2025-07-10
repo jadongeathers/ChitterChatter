@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+from datetime import timedelta
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -19,6 +20,8 @@ class Config:
     DEBUG = os.getenv("FLASK_ENV", "production") != "production"
     
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
 
     @staticmethod
     def validate():
