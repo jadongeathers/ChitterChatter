@@ -76,6 +76,7 @@ const languageCodeMap: Record<string, string> = {
   "Chinese": "zh",
   "Korean": "ko",
   "Arabic": "ar",
+  "Hindi": "hi"
 };
 
 // OpenAI voice options with descriptions
