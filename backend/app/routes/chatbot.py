@@ -21,6 +21,7 @@ def create_session():
         data = request.get_json()
         user_id = data.get("user_id")
         practice_case_id = data.get("practice_case_id")
+        speed = data.get("speed")  # ← NEW
 
         if not user_id:
             return jsonify({"error": "Missing user_id"}), 400
@@ -34,13 +35,23 @@ def create_session():
             return jsonify({"error": "Practice case not found"}), 404
 
         prompt_text = practice_case.system_prompt
-        session_data = voice_service.create_session(prompt_text, practice_case_id=practice_case_id)
+
+        # (Optional) clamp server-side too
+        if isinstance(speed, (int, float)):
+            speed = max(0.25, min(1.5, float(speed)))
+            current_app.logger.info(f"Realtime speed requested: {speed}")
+
+        # ↓↓↓ pass speed
+        session_data = voice_service.create_session(
+            prompt_text,
+            practice_case_id=practice_case_id,
+            speed=speed,  # ← NEW
+        )
         return jsonify(session_data)
 
     except Exception as e:
         current_app.logger.error(f"Error creating session: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
 
 @chatbot.route("/realtime", methods=["POST"])
 def proxy_openai_realtime():

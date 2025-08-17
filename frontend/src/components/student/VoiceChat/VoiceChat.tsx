@@ -8,6 +8,7 @@ import ConversationArea from "./ConversationArea";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchWithAuth } from "@/utils/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { CheckCircle } from "lucide-react";
 
 interface PracticeCase {
   id: number;
@@ -43,6 +44,7 @@ const VoiceChat: React.FC = () => {
   const [showConversationArea, setShowConversationArea] = useState(true);
   const [isEndingConversation, setIsEndingConversation] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const wasAiSpeakingOnPauseRef = useRef(false);
 
   // New pause-related state
@@ -337,8 +339,14 @@ const VoiceChat: React.FC = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to start conversation");
   
+      // compute numeric speed from the practiceCase setting
+      const speed =
+        typeof (practiceCase as any)?.speaking_speed_rate === "number"
+          ? (practiceCase as any).speaking_speed_rate
+          : mapSpeakingSpeedToRate((practiceCase as any)?.speaking_speed);
+
       conversationIdRef.current = data.conversation_id;
-      const { client_secret } = await apiClient.createSession(userId, practiceCaseId);
+      const { client_secret } = await apiClient.createSession(userId, practiceCaseId, { speed });
       const { pc: peerConnection, dataChannel, localStream: stream } = await setupWebRTCConnection(
         client_secret,
         handleMessage,
@@ -382,20 +390,36 @@ const VoiceChat: React.FC = () => {
       setTimeout(async () => {
         setShowConversationArea(false);
         setIsEndingConversation(false);
-        setIsWaitingForFeedback(true);
-        try {
-          const response = await fetchWithAuth(
+        
+        // Show success message first
+        setShowSuccessMessage(true);
+        
+        // Wait 2 seconds, then show feedback generation
+        setTimeout(() => {
+          setShowSuccessMessage(false);
+          setIsWaitingForFeedback(true);
+          
+          // API call to end conversation
+          fetchWithAuth(
             `/api/conversations/conversation/${conversationIdRef.current}/end`,
             { method: "POST" }
-          );
-          await response.json();
-          // Keep the waiting view visible and delay navigation for a smooth transition
-          setTimeout(() => {
-            navigate(`/feedback/${conversationIdRef.current}`);
-          }, 1000); // additional delay to let the waiting view settle
-        } catch (err) {
-          console.error("Error ending conversation:", err);
-        }
+          )
+          .then(response => response.json())
+          .then(() => {
+            // Navigate after a delay to let the feedback generation message show
+            setTimeout(() => {
+              navigate(`/feedback/${conversationIdRef.current}`);
+            }, 2000);
+          })
+          .catch(err => {
+            console.error("Error ending conversation:", err);
+            // Navigate anyway after error
+            setTimeout(() => {
+              navigate(`/feedback/${conversationIdRef.current}`);
+            }, 1000);
+          });
+          
+        }, 2000);
       }, 600); // Duration matches the exit animation
     }    
   };
@@ -438,12 +462,26 @@ const VoiceChat: React.FC = () => {
     }
   };
 
+  // --- NEW: pick the scenario image to show and pass it down ---
+  const scenarioImageUrl = practiceCase?.image_url ?? null;
+
+  // VoiceChat.tsx (top-level helper)
+  const mapSpeakingSpeedToRate = (val?: 'slow' | 'normal' | 'fast'): number => {
+    if (val === 'slow') return 0.9;   // min 0.25 allowed; pick what feels right
+    if (val === 'fast') return 1.25;   // max 1.5 allowed
+    return 1.0;                        // default
+  };
+
   return (
     <>
       <StartSessionDialog
         open={isModalOpen}
         onOpenChange={handleModalClose}
-        practiceCase={practiceCase}
+        practiceCase={
+          practiceCase
+            ? { ...practiceCase, image_url: practiceCase.image_url ?? undefined }
+            : null
+        }
         onStart={startSession}
       />
 
@@ -462,6 +500,43 @@ const VoiceChat: React.FC = () => {
         </Card>
       </div>
 
+      {/* Success message */}
+      <div className={`fixed inset-0 z-50 bg-black bg-opacity-20 flex items-center justify-center transition-opacity duration-500 ${showSuccessMessage ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: showSuccessMessage ? 1 : 0.8, opacity: showSuccessMessage ? 1 : 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+          <Card className="w-full max-w-md bg-white shadow-xl border-0">
+            <CardContent className="p-8 text-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: showSuccessMessage ? 1 : 0 }}
+                transition={{ delay: 0.2, duration: 0.5, type: "spring", stiffness: 200 }}
+              >
+                <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              </motion.div>
+              <motion.h2 
+                className="text-xl font-bold text-gray-800 mb-2"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: showSuccessMessage ? 1 : 0, y: showSuccessMessage ? 0 : 10 }}
+                transition={{ delay: 0.3, duration: 0.3 }}
+              >
+                Conversation Successfully Ended!
+              </motion.h2>
+              <motion.p 
+                className="text-gray-600"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: showSuccessMessage ? 1 : 0, y: showSuccessMessage ? 0 : 10 }}
+                transition={{ delay: 0.4, duration: 0.3 }}
+              >
+                Great job! Your conversation has been recorded.
+              </motion.p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
       {isTimeUp ? (
         <Card className="w-full max-w-md mx-auto p-6 text-center">
           <CardContent>
@@ -469,18 +544,27 @@ const VoiceChat: React.FC = () => {
           </CardContent>
         </Card>
       ) : isWaitingForFeedback ? (
-        <Card className="w-full max-w-md mx-auto p-6 text-center">
-          <CardContent>
-            <h2 className="text-lg font-semibold">Waiting for feedback</h2>
-            <span>{loadingDots}</span>
-          </CardContent>
-        </Card>
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-20 flex items-center justify-center transition-opacity duration-300">
+          <Card className="w-full max-w-md bg-white shadow-lg">
+            <CardContent className="p-6 text-center">
+              <h2 className="text-lg font-semibold mb-2">Generating Your Feedback</h2>
+              <p className="text-gray-600 mb-4">
+                Let's take some time to look at the highlights of your conversation.
+              </p>
+              <div className="flex justify-center space-x-1 mt-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "600ms" }}></div>
+              </div>
+              <p className="text-gray-500 mt-2 text-sm">Please wait...</p>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         isSessionStarted && (
           <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: isExiting ? 0 : 1 }} 
-            className="min-h-screen flex flex-col items-center justify-center p-6"
           >
             <ConversationArea
               currentMessage={currentMessage}
@@ -489,6 +573,7 @@ const VoiceChat: React.FC = () => {
               stopSession={handleStopClick}
               status={status}
               error={error}
+              practiceCase={practiceCase}
               remoteStream={remoteStream}
               timerMin={practiceCase?.min_time ?? 30}
               timerMax={practiceCase?.max_time ?? 300}
@@ -505,6 +590,8 @@ const VoiceChat: React.FC = () => {
               onPause={pauseConversation}
               onResume={resumeConversation}
               totalPausedTime={totalPausedTime}
+              // NEW: pass scenario image down
+              scenarioImageUrl={scenarioImageUrl}
             />
           </motion.div>
         )

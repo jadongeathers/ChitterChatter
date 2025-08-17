@@ -67,8 +67,8 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
           }`} />
           
           <CardHeader className="flex-grow pb-3">
-            {/* Header with icon and time */}
-            <div className="flex items-center justify-between mb-3">
+            {/* Header with icon and time - Fixed height */}
+            <div className="flex items-center justify-between mb-3 h-6">
               <div className="flex items-center space-x-2">
                 <div className={`p-2 rounded-lg ${
                   practiceCase.completed 
@@ -94,26 +94,29 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
               </div>
             </div>
 
-            {/* Title and description */}
-            <CardTitle className="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 mb-2">
+            {/* Title - Limited to 2 lines with fixed height */}
+            <CardTitle className="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 mb-2 h-12 leading-6">
               {practiceCase.title}
             </CardTitle>
             
-            <CardDescription className="line-clamp-3 text-gray-600 text-sm leading-relaxed flex-grow">
+            {/* Description - Limited to 2 lines with fixed height */}
+            <CardDescription className="line-clamp-2 text-gray-600 text-sm leading-5 mb-3 h-10">
               {practiceCase.description}
             </CardDescription>
 
             {/* Read More Link */}
             <button
               onClick={() => setIsModalOpen(true)}
-              className="text-sm text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center mt-3 font-medium transition-colors"
+              className="text-sm text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center font-medium transition-colors"
             >
               Read more
               <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
             </button>
+          </CardHeader>
 
-            {/* Status badges */}
-            <div className="flex items-center justify-between mt-4">
+          {/* Middle section - Fixed height for status badges */}
+          <div className="px-6 pb-3">
+            <div className="h-8 flex items-start">
               {practiceCase.completed && (
                 <Badge className="bg-green-100 text-green-800 border-green-200">
                   <CheckCircle className="h-3 w-3 mr-1" />
@@ -128,9 +131,9 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
                 </Badge>
               )}
             </div>
-          </CardHeader>
+          </div>
 
-          {/* Action Button */}
+          {/* Action Button - Fixed at bottom */}
           <CardContent className="pt-0 pb-6 mt-auto">
             <Button
               className={`w-full rounded-lg font-medium transition-all duration-200 ${

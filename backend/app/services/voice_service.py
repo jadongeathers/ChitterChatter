@@ -16,6 +16,7 @@ class VoiceService:
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
+            "OpenAI-Beta": "realtime=v1", # TODO: Is this still needed?
         }
 
     def generate_preview(self, voice_id: str, text: str):
@@ -69,55 +70,53 @@ class VoiceService:
             current_app.logger.error(f"Failed to generate voice preview for voice '{voice_id}': {e}")
             return None
 
-    def create_session(self, prompt_text, practice_case_id=None):
-        """
-        Create a new realtime conversation session with the provided prompt text.
-        
-        Args:
-            prompt_text (str): The system prompt for the conversation
-            practice_case_id (int, optional): The ID of the practice case to use for voice/language settings
-        """
+    def create_session(self, prompt_text, practice_case_id=None, speed: float | None = None):  # ← add speed
         try:
-            # Default values for realtime session
             voice = "verse"
             language_code = "en"
-            
-            # If practice_case_id is provided, fetch voice and language settings
+
             if practice_case_id:
                 try:
                     practice_case = PracticeCase.query.get(practice_case_id)
                     if practice_case:
                         voice = practice_case.voice or voice
                         language_code = practice_case.language_code or language_code
-                        current_app.logger.info(f"Using voice={voice}, language_code={language_code} from practice case {practice_case_id}")
+                        current_app.logger.info(
+                            f"Using voice={voice}, language_code={language_code} from practice case {practice_case_id}"
+                        )
                 except Exception as e:
                     current_app.logger.error(f"Error fetching practice case settings: {str(e)}")
-                    # Continue with defaults
-            
-            current_app.logger.info(f"Creating realtime session with voice={voice}, language_code={language_code}")
-            
+
+            payload = {
+                # You can use the stable alias:
+                "model": "gpt-4o-realtime-preview",
+                "voice": voice,
+                "instructions": prompt_text,
+                "input_audio_transcription": {
+                    "model": "whisper-1",
+                    "language": language_code
+                },
+                "turn_detection": {
+                    "type": "server_vad",
+                    "threshold": 0.75,
+                    "prefix_padding_ms": 500,
+                    "silence_duration_ms": 1000
+                }
+            }
+
+            # include speed if provided
+            if isinstance(speed, (int, float)):
+                clamped = max(0.25, min(1.5, float(speed)))
+                payload["speed"] = clamped
+                current_app.logger.info(f"Including TTS speed={clamped}")
+
             response = requests.post(
                 f"{self.api_base}/realtime/sessions",
                 headers=self.headers,
-                json={
-                    "model": "gpt-4o-realtime-preview-2024-12-17",
-                    "voice": voice,
-                    "instructions": prompt_text,
-                    "input_audio_transcription": {
-                        "model": "whisper-1",
-                        "language": language_code
-                    },
-                    "turn_detection": {
-                        "type": "server_vad",
-                        "threshold": 0.5,
-                        "prefix_padding_ms": 500,
-                        "silence_duration_ms": 1000
-                    }
-                },
+                json=payload,
                 timeout=10,
             )
 
-            # Handle response
             response.raise_for_status()
             session_data = response.json()
 
@@ -136,7 +135,6 @@ class VoiceService:
         except requests.exceptions.RequestException as e:
             current_app.logger.error(f"Failed to create session: {str(e)}")
             raise Exception(f"Failed to create session: {str(e)}")
-
 
     def end_session(self, session_id):
         """

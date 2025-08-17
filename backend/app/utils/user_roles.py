@@ -45,3 +45,23 @@ def filter_users(institution=None, class_name=None, section=None, role=None):
 
 def get_instructor_section(user):
     return next((e.section for e in user.enrollments if e.role == "instructor"), None)
+
+def can_user_modify_case(user, case):
+    """
+    Check if a user has the rights to modify (update/delete) a practice case.
+    A user can modify a case if they are a 'master' user or an instructor
+    enrolled in the class the case belongs to.
+    """
+    # Masters have universal modification rights.
+    if user.is_master:
+        return True
+    
+    # Students cannot modify cases.
+    if user.is_student:
+        return False
+        
+    # For instructors, get the set of class IDs they are teaching.
+    instructor_class_ids = {e.section.class_id for e in user.enrollments if e.role == "instructor"}
+    
+    # Return True if the case's class_id is in the set of classes the instructor teaches.
+    return case.class_id in instructor_class_ids

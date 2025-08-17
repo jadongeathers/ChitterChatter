@@ -13,8 +13,13 @@ from .enrollment import Enrollment
 from .user import User
 from .class_model import Class
 from .term import Term
+from .feedback_conversation import FeedbackConversation
+from .feedback_message import FeedbackMessage
+from .practice_case_image import PracticeCaseImage
 
 __all__ = [
     "User", "Institution", "Class", "Section", "Enrollment", 
-    "Conversation", "Message", "PracticeCase", "SystemFeedback", "Survey", "Term"
+    "Conversation", "Message", "PracticeCase", "SystemFeedback", 
+    "Survey", "Term", "FeedbackConversation", "FeedbackMessage"
+    "PracticeCaseImage", "UserImageCredits"
 ]

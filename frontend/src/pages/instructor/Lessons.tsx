@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { fetchWithAuth } from "@/utils/api";
 import PracticeCaseCard from "@/components/instructor/PracticeCaseCard";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, BookOpen, Search, Filter, SortAsc } from "lucide-react";
+import { Plus, BookOpen, Search, Filter, SortAsc, Globe, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,8 @@ interface PracticeCase {
   is_draft: boolean;
   created_at?: string;
   accessible_on?: string;
+  submitted_to_library?: boolean;
+  library_approved?: boolean;
 }
 
 const Lessons: React.FC = () => {
@@ -41,7 +43,6 @@ const Lessons: React.FC = () => {
     try {
       setIsLoading(true);
       
-      // Add include_drafts=true to show both published and draft cases
       const params = new URLSearchParams(apiParams.toString());
       params.set('include_drafts', 'true');
       
@@ -84,6 +85,8 @@ const Lessons: React.FC = () => {
       filtered = filtered.filter((case_) => case_.published && !case_.is_draft);
     } else if (filterBy === "draft") {
       filtered = filtered.filter((case_) => case_.is_draft || !case_.published);
+    } else if (filterBy === "library") {
+      filtered = filtered.filter((case_) => case_.submitted_to_library || case_.library_approved);
     }
 
     // Apply sorting
@@ -130,6 +133,11 @@ const Lessons: React.FC = () => {
     navigate(route);
   };
 
+  // Navigate to global library
+  const handleBrowseLibrary = () => {
+    navigate("/instructor/library");
+  };
+
   // Helper functions for display text
   const getPageDescription = () => {
     if (selectedClass) {
@@ -171,6 +179,10 @@ const Lessons: React.FC = () => {
     return practiceCases.filter(case_ => case_.is_draft || !case_.published).length;
   };
 
+  const getLibraryCount = () => {
+    return practiceCases.filter(case_ => case_.submitted_to_library || case_.library_approved).length;
+  };
+
   // Effects
   useEffect(() => {
     fetchPracticeCases();
@@ -187,53 +199,89 @@ const Lessons: React.FC = () => {
     >
       {/* Enhanced Stats and Controls */}
       <div className="mb-8 space-y-6">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+        {/* Enhanced Stats Overview */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">
-                <div className="bg-blue-600 p-2 rounded-lg">
-                  <BookOpen className="h-5 w-5 text-white" />
+                <div className="bg-blue-50 p-2 rounded-lg">
+                  <BookOpen className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-blue-900">{practiceCases.length}</div>
-                  <div className="text-sm text-blue-700">Total Cases</div>
+                  <div className="text-xl font-semibold text-gray-900">{practiceCases.length}</div>
+                  <div className="text-sm text-gray-600">Total Cases</div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">
-                <div className="bg-green-600 p-2 rounded-lg">
-                  <div className="h-5 w-5 bg-white rounded-full flex items-center justify-center">
-                    <div className="h-2 w-2 bg-green-600 rounded-full"></div>
+                <div className="bg-green-50 p-2 rounded-lg">
+                  <div className="h-5 w-5 bg-green-600 rounded-full flex items-center justify-center">
+                    <div className="h-2 w-2 bg-white rounded-full"></div>
                   </div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-green-900">{getPublishedCount()}</div>
-                  <div className="text-sm text-green-700">Published</div>
+                  <div className="text-xl font-semibold text-gray-900">{getPublishedCount()}</div>
+                  <div className="text-sm text-gray-600">Published</div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center space-x-3">
-                <div className="bg-orange-600 p-2 rounded-lg">
-                  <div className="h-5 w-5 bg-white rounded-full flex items-center justify-center">
-                    <div className="h-2 w-2 bg-orange-600 rounded-full"></div>
+                <div className="bg-amber-50 p-2 rounded-lg">
+                  <div className="h-5 w-5 bg-amber-500 rounded-full flex items-center justify-center">
+                    <div className="h-2 w-2 bg-white rounded-full"></div>
                   </div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-orange-900">{getDraftCount()}</div>
-                  <div className="text-sm text-orange-700">Drafts</div>
+                  <div className="text-xl font-semibold text-gray-900">{getDraftCount()}</div>
+                  <div className="text-sm text-gray-600">Drafts</div>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          <Card className="bg-white border-gray-200 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="bg-purple-50 p-2 rounded-lg">
+                  <Globe className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <div className="text-xl font-semibold text-gray-900">{getLibraryCount()}</div>
+                  <div className="text-sm text-gray-600">In Library</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Global Library CTA */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <Globe className="h-5 w-5 text-blue-600" />
+              <div>
+                <h3 className="text-base font-medium text-gray-900">Global Case Library</h3>
+                <p className="text-sm text-gray-600">
+                  Browse practice cases shared by instructors worldwide
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleBrowseLibrary}
+              className="bg-white text-blue-700 hover:bg-gray-50 border border-blue-200 text-sm shadow-sm"
+            >
+              <Globe className="h-4 w-4 mr-2" />
+              Browse Library
+            </Button>
+          </div>
         </div>
 
         {/* Search and Filter Controls */}
@@ -254,7 +302,7 @@ const Lessons: React.FC = () => {
               {/* Filters */}
               <div className="flex gap-3">
                 <Select value={filterBy} onValueChange={setFilterBy}>
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger className="w-36">
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue />
                   </SelectTrigger>
@@ -262,6 +310,7 @@ const Lessons: React.FC = () => {
                     <SelectItem value="all">All</SelectItem>
                     <SelectItem value="published">Published</SelectItem>
                     <SelectItem value="draft">Drafts</SelectItem>
+                    <SelectItem value="library">In Library</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -355,6 +404,34 @@ const Lessons: React.FC = () => {
                 </div>
               </motion.div>
             )}
+
+            {/* Browse Library Card - Show when no filters applied */}
+            {!searchTerm && filterBy === "all" && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, delay: (filteredCases.length + 1) * 0.05 }}
+                className="flex"
+              >
+                <div
+                  onClick={handleBrowseLibrary}
+                  className="hover:shadow-lg hover:border-purple-500 transition-all duration-200 cursor-pointer flex items-center justify-center border-2 border-dashed border-purple-300 rounded-lg p-6 h-full w-full min-h-[200px] group bg-gradient-to-br from-purple-50 to-blue-50"
+                >
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="bg-purple-100 p-3 rounded-full group-hover:bg-purple-200 transition-colors">
+                      <Globe className="h-8 w-8 text-purple-600" />
+                    </div>
+                    <div className="text-lg font-medium text-purple-600 group-hover:text-purple-700">
+                      Browse Library
+                    </div>
+                    <div className="text-sm text-purple-500">
+                      Discover cases from the community
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       )}
@@ -376,10 +453,21 @@ const Lessons: React.FC = () => {
             {getEmptyStateMessage()}
           </p>
           {(!searchTerm && filterBy === "all") && (
-            <Button onClick={handleAddCase} size="lg" className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-5 w-5 mr-2" />
-              Create Your First Case
-            </Button>
+            <div className="space-x-3">
+              <Button onClick={handleAddCase} size="lg" className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-5 w-5 mr-2" />
+                Create Your First Case
+              </Button>
+              <Button 
+                onClick={handleBrowseLibrary} 
+                variant="outline" 
+                size="lg"
+                className="border-purple-500 text-purple-600 hover:bg-purple-50"
+              >
+                <Globe className="h-5 w-5 mr-2" />
+                Browse Library
+              </Button>
+            </div>
           )}
           {(searchTerm || filterBy !== "all") && (
             <div className="space-x-3">

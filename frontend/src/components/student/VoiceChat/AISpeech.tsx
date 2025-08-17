@@ -2,26 +2,25 @@ import React, { useRef, useEffect } from "react";
 
 interface AISpeechProps {
   stream: MediaStream | null;
-  isPaused: boolean; // Add this prop
+  isPaused: boolean;
 }
 
 const AISpeech: React.FC<AISpeechProps> = ({ stream, isPaused }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // ✅ ADD THIS USEEFFECT TO CONTROL PAUSE/PLAY
+  // Control pause/play
   useEffect(() => {
     if (!audioRef.current) return;
 
     if (isPaused) {
       audioRef.current.pause();
     } else {
-      // When un-pausing, we ask the browser to play the audio again.
       audioRef.current.play().catch(error => {
         console.error("Error attempting to play audio:", error);
       });
     }
-  }, [isPaused]); // This effect runs whenever the 'isPaused' prop changes
+  }, [isPaused]);
 
   useEffect(() => {
     if (audioRef.current && stream) {
@@ -29,8 +28,31 @@ const AISpeech: React.FC<AISpeechProps> = ({ stream, isPaused }) => {
     }
   }, [stream]);
 
+  // Handle canvas sizing - responsive with constraints
   useEffect(() => {
-    if (!stream || !canvasRef.current || isPaused) return; // Also pause visualizer
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resizeCanvas = () => {
+      const container = canvas.parentElement;
+      if (container) {
+        // Responsive width with min/max constraints
+        const containerWidth = container.offsetWidth;
+        const width = Math.min(Math.max(containerWidth - 40, 300), 500); // Min 300px, max 500px
+        canvas.width = width;
+        canvas.height = 60;
+      }
+    };
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    return () => window.removeEventListener('resize', resizeCanvas);
+  }, []);
+
+  useEffect(() => {
+    if (!stream || !canvasRef.current || isPaused) return;
+    
     const audioCtx = new AudioContext();
     const analyser = audioCtx.createAnalyser();
     const source = audioCtx.createMediaStreamSource(stream);
@@ -76,12 +98,11 @@ const AISpeech: React.FC<AISpeechProps> = ({ stream, isPaused }) => {
       cancelAnimationFrame(animationFrameId);
       source.disconnect();
       analyser.disconnect();
-      // Only close the context if it's not already closed
       if (audioCtx.state !== 'closed') {
         audioCtx.close();
       }
     };
-  }, [stream, isPaused]); // Add isPaused to stop/start the visualizer
+  }, [stream, isPaused]);
 
   return (
     <div className="relative">
@@ -91,7 +112,6 @@ const AISpeech: React.FC<AISpeechProps> = ({ stream, isPaused }) => {
         <div className="flex items-center justify-center">
           <canvas 
             ref={canvasRef} 
-            width={300} 
             height={60} 
             className="rounded" 
             style={{ display: 'block' }}
@@ -101,7 +121,7 @@ const AISpeech: React.FC<AISpeechProps> = ({ stream, isPaused }) => {
         <div className="flex items-center justify-center mt-2">
           <div className="flex items-center gap-1 text-xs text-gray-500">
             <div className={`w-1.5 h-1.5 bg-blue-500 rounded-full ${!isPaused && 'animate-pulse'}`}></div>
-            <span>{isPaused ? 'Paused' : 'Audio Waveform'}</span>
+            <span>{isPaused ? 'Paused' : 'AI Voice'}</span>
           </div>
         </div>
       </div>

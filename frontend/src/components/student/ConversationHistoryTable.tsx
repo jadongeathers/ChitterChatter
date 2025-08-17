@@ -101,7 +101,7 @@ const ConversationHistoryTable: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                onClick={() => navigate(`/student/conversations/${convo.id}`)}
+                onClick={() => navigate(`/feedback/${convo.id}`)}
               >
                 <td className="p-4">
                   <div className="font-medium text-gray-900">{convo.practice_case_title}</div>

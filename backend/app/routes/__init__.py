@@ -8,6 +8,7 @@ from .students import students
 from .master import master
 from .system import system
 from .surveys import surveys
+from .dialogic_feedback import dialogic_feedback
 
 def register_blueprints(app):
     app.register_blueprint(chatbot, url_prefix='/api/chatbot')
@@ -19,3 +20,4 @@ def register_blueprints(app):
     app.register_blueprint(master, url_prefix='/api/master')
     app.register_blueprint(system, url_prefix='/api/system')
     app.register_blueprint(surveys, url_prefix='/api/surveys')
+    app.register_blueprint(dialogic_feedback, url_prefix='/api/dialogic_feedback')

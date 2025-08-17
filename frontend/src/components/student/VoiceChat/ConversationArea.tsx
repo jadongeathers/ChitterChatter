@@ -1,10 +1,20 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Pause, Play } from "lucide-react";
-import AISpeech from "./AISpeech";
-import TimerWrapper from "./TimerWrapper";
+import { Card, CardContent } from "@/components/ui/card";
+import { Pause, Wifi, WifiOff } from "lucide-react";
+import Timer from "./Timer";
+import AIImage from "./AIImage";
+import SpeechAndControlsPanel from "./SpeechAndControlsPanel";
+
+interface PracticeCase {
+  id: number;
+  institution: string;
+  class_name: string;
+  description: string;
+  system_prompt: string;
+  image_url?: string;
+  notes_for_students?: string;
+}
 
 interface ConversationAreaProps {
   currentMessage: string;
@@ -21,11 +31,13 @@ interface ConversationAreaProps {
   canStop: boolean;
   onTick?: (elapsed: number) => void;
   isEndingConversation?: boolean;
-  // New pause props
   isPaused: boolean;
   onPause: () => void;
   onResume: () => void;
   totalPausedTime: number;
+  scenarioImageUrl?: string | null;
+  additionalInformation?: string;
+  practiceCase?: PracticeCase | null;
 }
 
 const ConversationArea: React.FC<ConversationAreaProps> = ({
@@ -46,144 +58,208 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
   isPaused,
   onPause,
   onResume,
-  totalPausedTime
+  totalPausedTime,
+  scenarioImageUrl,
+  additionalInformation,
+  practiceCase,
 }) => {
-  console.log("ConversationArea props:", { timerMin, timerMax, timeElapsed, canStop, isPaused });
+  const [displayTime, setDisplayTime] = useState(0);
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [connectionModalType, setConnectionModalType] = useState<'connecting' | 'connected'>('connecting');
+
+  // Handle connection status changes
+  useEffect(() => {
+    if (status === "Connecting...") {
+      setShowConnectionModal(true);
+      setConnectionModalType('connecting');
+    } else if (status === "Connected") {
+      // Show connected state briefly before fading out
+      setConnectionModalType('connected');
+      const timer = setTimeout(() => {
+        setShowConnectionModal(false);
+      }, 1500); // Show "Connected" for 1.5 seconds before fading
+      
+      return () => clearTimeout(timer);
+    } else if (status === "Disconnected" || status === "Failed") {
+      setShowConnectionModal(false);
+    }
+  }, [status]);
+
+  // Determine if we have an image to show
+  const hasImage = scenarioImageUrl && scenarioImageUrl.trim() !== "";
 
   return (
-    <Card className="w-full max-w-2xl p-4 relative">
-      <CardHeader className="flex items-center justify-between">
-        <CardTitle>Conversation</CardTitle>
-        <div className="flex flex-col items-end gap-2">
-          <div
-            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${
-              status === "Connected" || status === "Paused"
-                ? "bg-green-100 text-green-800"
-                : status === "Error"
-                ? "bg-red-100 text-red-800"
-                : "bg-gray-100 text-gray-800"
-            }`}
-          >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                status === "Connected" || status === "Paused"
-                  ? "bg-green-500"
-                  : status === "Error"
-                  ? "bg-red-500"
-                  : "bg-gray-500"
-              }`}
-            />
-            {status}
-          </div>
-          <TimerWrapper 
-            minTime={timerMin} 
-            maxTime={timerMax} 
-            onTimeUp={onTimerUp} 
-            onTick={onTick}
-            startTimer={status === "Connected" || status === "Paused" || status === "Resuming..."} // Timer only starts when status is Connected
-            isEndingConversation={isEndingConversation}
-            isPaused={isPaused}
-            totalPausedTime={totalPausedTime}
-          />
-        </div>
-      </CardHeader>
+    <div className="h-screen flex flex-col">
+      {/* Hidden Timer Component */}
+      <div style={{ display: "none" }}>
+        <Timer
+          minTime={timerMin}
+          maxTime={timerMax}
+          onTimeUp={onTimerUp}
+          onTick={(elapsed) => {
+            setDisplayTime(elapsed);
+            onTick?.(elapsed);
+          }}
+          startTimer={status === "Connected" || status === "Paused" || status === "Resuming..."}
+          isPaused={isPaused}
+          totalPausedTime={totalPausedTime}
+        />
+      </div>
 
-      <CardContent>
-        <Card className="p-4 shadow-md">
-          <div className="flex items-center justify-between pb-2">
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white shrink-0">
-                AI
+      {/* Main Content */}
+      <div className="flex-1 p-4 flex items-center justify-center">
+        <div className="w-full max-w-6xl">
+          {hasImage ? (
+            // Two-column layout when image is available
+            <div className="grid grid-cols-2 gap-8" style={{ height: '70vh' }}>
+              {/* Left Column - Image */}
+              <div className="flex items-center justify-center">
+                <AIImage scenarioImageUrl={scenarioImageUrl!} />
               </div>
-              {remoteStream && <AISpeech stream={remoteStream} isPaused={isPaused} />}
-            </div>
-            <Button variant="ghost" size="sm" onClick={onToggleShowHint} className="border">
-              {showHint ? "Hide" : "Show"} Hints
-            </Button>
-          </div>
 
-          {showHint && (
-            <div className="mt-2 h-32 overflow-y-auto px-4 py-2 border rounded">
-              <AnimatePresence mode="wait">
-                {currentMessage && (
-                  <motion.div
-                    key={currentMessage}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.5, ease: "easeInOut" }}
-                    className="text-base leading-relaxed"
-                  >
-                    {currentMessage}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {/* Right Column - Combined Speech and Controls */}
+              <SpeechAndControlsPanel
+                remoteStream={remoteStream}
+                isPaused={isPaused}
+                currentMessage={currentMessage}
+                showHint={showHint}
+                onToggleShowHint={onToggleShowHint}
+                additionalInformation={additionalInformation}
+                status={status}
+                displayTime={displayTime}
+                timerMin={timerMin}
+                timerMax={timerMax}
+                onPause={onPause}
+                onResume={onResume}
+                canStop={canStop}
+                stopSession={stopSession}
+                conversationDescription={practiceCase?.description}
+                notesForStudents={practiceCase?.notes_for_students}
+              />
+            </div>
+          ) : (
+            // Single-column layout when no image
+            <div className="max-w-2xl mx-auto" style={{ height: '70vh' }}>
+              <SpeechAndControlsPanel
+                remoteStream={remoteStream}
+                isPaused={isPaused}
+                currentMessage={currentMessage}
+                showHint={showHint}
+                onToggleShowHint={onToggleShowHint}
+                additionalInformation={additionalInformation}
+                status={status}
+                displayTime={displayTime}
+                timerMin={timerMin}
+                timerMax={timerMax}
+                onPause={onPause}
+                onResume={onResume}
+                canStop={canStop}
+                stopSession={stopSession}
+                conversationDescription={practiceCase?.description}
+              />
             </div>
           )}
-        </Card>
+        </div>
+      </div>
 
-        {(status === "Connected" || status === "Paused") && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center gap-3 mt-4">
-            {/* Pause/Resume Button */}
-            <Button
-              onClick={isPaused ? onResume : onPause}
-              variant={isPaused ? "default" : "outline"}
-              className="flex items-center gap-2"
-            >
-              {isPaused ? (
-                <>
-                  <Play className="w-4 h-4" />
-                  Resume
-                </>
-              ) : (
-                <>
-                  <Pause className="w-4 h-4" />
-                  Pause
-                </>
-              )}
-            </Button>
-
-            {/* Stop Button */}
-            <Button
-              onClick={stopSession}
-              variant="destructive"
-              className={!canStop ? "opacity-50" : ""}
-            >
-              End Conversation
-            </Button>
+      {/* Connection Status Modal */}
+      <AnimatePresence>
+        {showConnectionModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          >
+            <Card className={`shadow-2xl border-2 ${
+              connectionModalType === 'connecting' 
+                ? 'bg-gray-50 border-gray-300' 
+                : 'bg-green-50 border-green-300'
+            }`}>
+              <CardContent className="p-8">
+                <div className="flex flex-col items-center gap-4">
+                  <motion.div
+                    animate={connectionModalType === 'connecting' ? { scale: [1, 1.1, 1] } : {}}
+                    transition={{ 
+                      duration: 2, 
+                      repeat: connectionModalType === 'connecting' ? Infinity : 0,
+                      ease: "easeInOut" 
+                    }}
+                  >
+                    {connectionModalType === 'connecting' ? (
+                      <WifiOff className="w-12 h-12 text-gray-500" />
+                    ) : (
+                      <Wifi className="w-12 h-12 text-green-600" />
+                    )}
+                  </motion.div>
+                  <div className="text-center">
+                    <p className={`text-xl font-semibold ${
+                      connectionModalType === 'connecting' 
+                        ? 'text-gray-700' 
+                        : 'text-green-700'
+                    }`}>
+                      {connectionModalType === 'connecting' ? 'Connecting...' : 'Connected!'}
+                    </p>
+                    <p className={`text-sm mt-1 ${
+                      connectionModalType === 'connecting' 
+                        ? 'text-gray-600' 
+                        : 'text-green-600'
+                    }`}>
+                      {connectionModalType === 'connecting' 
+                        ? 'Please wait while we establish connection' 
+                        : 'You can now start speaking'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </motion.div>
         )}
+      </AnimatePresence>
 
-        {/* Pause notification */}
+      {/* Pause Notification */}
+      <AnimatePresence>
         {isPaused && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg text-center"
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-6 left-1/2 transform -translate-x-1/2 z-40"
           >
-            <p className="text-gray-800 font-medium">
-              Conversation is paused. The AI cannot hear you.
-            </p>
-            <p className="text-gray-600 text-sm mt-1">
-              Click Resume to continue the conversation.
-            </p>
+            <Card className="bg-orange-50 border-orange-200 shadow-lg">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <Pause className="w-5 h-5 text-orange-600" />
+                  <div>
+                    <p className="font-medium text-orange-800">Session Paused</p>
+                    <p className="text-sm text-orange-700">The AI cannot hear you while paused</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </motion.div>
         )}
+      </AnimatePresence>
 
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mt-4 p-4 bg-red-100 text-red-800 rounded-lg"
-            >
-              {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </CardContent>
-    </Card>
+      {/* Error Notification */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-6 left-1/2 transform -translate-x-1/2 z-40"
+          >
+            <Card className="bg-red-50 border-red-200 shadow-lg max-w-md">
+              <CardContent className="p-4">
+                <p className="text-red-800">{error}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 

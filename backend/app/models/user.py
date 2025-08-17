@@ -48,6 +48,8 @@ class User(db.Model):
     conversations = db.relationship("Conversation", back_populates="user", lazy=True)
     messages = db.relationship("Message", back_populates="user", lazy=True)
     enrollments = db.relationship("Enrollment", back_populates="user", cascade="all, delete-orphan")
+    feedback_conversations = db.relationship("FeedbackConversation", back_populates="user")
+    feedback_messages = db.relationship("FeedbackMessage", back_populates="user")
 
     def set_password(self, password):
         """Hashes and stores the password."""

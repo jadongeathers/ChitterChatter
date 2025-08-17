@@ -28,6 +28,7 @@ import InstructorSettings from "./pages/instructor/Settings";
 import ClassesPage from "@/pages/master/ClassesPage";
 import LandingPage from "@/pages/common/LandingPage";
 import ResearchTeam from "@/pages/common/ResearchTeam";
+import GlobalLibrary from "@/pages/instructor/GlobalCaseLibrary";
 
 // Context Providers
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -109,6 +110,7 @@ const AppRoutes = () => {
           <Route path="/instructor/analytics" element={<Analytics />} />
           <Route path="/instructor/settings" element={<InstructorSettings />} />
           <Route path="/instructor/feedback-help" element={<InstructorFeedbackHelp />} />
+          <Route path="/instructor/library" element={<GlobalLibrary />} />
         </Route>
 
         {/* --- MASTER ONLY ROUTES --- */}

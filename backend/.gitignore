@@ -12,6 +12,7 @@ __pycache__/
 # Database files
 *.db
 *.sqlite3
+data.ipynb
 
 # Sensitive scripts
 add_users.py

@@ -3,6 +3,11 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from functools import wraps
 from app.models import PracticeCase, Conversation, User, Enrollment, Section, db
 from datetime import datetime, timezone
+from app.services.image_service import ImageService, ImageGenerationError
+from app.models import PracticeCaseImage 
+from app.utils.user_roles import can_user_modify_case
+import os
+import json
 
 practice_cases = Blueprint('practice_cases', __name__)
 
@@ -29,15 +34,6 @@ def can_user_access_class(user, class_id):
         # Instructor
         instructor_class_ids = {e.section.class_id for e in user.enrollments if e.role == "instructor"}
         return class_id in instructor_class_ids
-
-def can_user_modify_case(user, case):
-    """Check if user can modify (update/delete) a practice case."""
-    if user.is_master:
-        return True
-    
-    # Only instructors who teach the class can modify cases
-    instructor_class_ids = {e.section.class_id for e in user.enrollments if e.role == "instructor"}
-    return case.class_id in instructor_class_ids
 
 def get_user_accessible_class_ids(user):
     """Get all class IDs the user has access to."""
@@ -255,17 +251,22 @@ def add_practice_case():
         accessible_on=accessible_on,
         voice=data.get("voice", "verse"),
         language_code=data.get("language_code", "en"),
-        
+
         # New individual fields
         target_language=data.get("target_language", ""),
         situation_instructions=data.get("situation_instructions", ""),
+        cultural_context=data.get("cultural_context", ""),
         curricular_goals=data.get("curricular_goals", ""),
         key_items=data.get("key_items", ""),
         behavioral_guidelines=data.get("behavioral_guidelines", ""),
         proficiency_level=data.get("proficiency_level", ""),
         instructor_notes=data.get("instructor_notes", ""),
+        notes_for_students= data.get("notes_for_students", ""),
         feedback_prompt=data.get("feedback_prompt", ""),
-        
+
+        # 🔹 NEW: speaking speed
+        speaking_speed=data.get("speaking_speed", "normal"),
+
         # Draft and publish status
         is_draft=is_draft,
         published=published,
@@ -306,8 +307,8 @@ def update_practice_case(case_id):
     # Update basic fields if provided
     updateable_fields = [
         "title", "description", "min_time", "max_time", "voice", "language_code",
-        "target_language", "situation_instructions", "curricular_goals", 
-        "key_items", "behavioral_guidelines", "proficiency_level", "instructor_notes", "feedback_prompt"
+        "target_language", "situation_instructions", "curricular_goals", "cultural_context", "speaking_speed",
+        "key_items", "behavioral_guidelines", "proficiency_level", "instructor_notes", "feedback_prompt", "notes_for_students"
     ]
     
     for field in updateable_fields:
@@ -389,8 +390,8 @@ def publish_practice_case(case_id):
     updateable_fields = [
         "title", "description", "min_time", "max_time", "accessible_on", 
         "voice", "language_code", "target_language", "situation_instructions",
-        "curricular_goals", "key_items", "behavioral_guidelines", 
-        "proficiency_level", "instructor_notes"
+        "curricular_goals", "key_items", "behavioral_guidelines", "cultural_context",
+        "proficiency_level", "instructor_notes", "speaking_speed", "notes_for_students", "feedback_prompt"
     ]
     
     for field in updateable_fields:
@@ -544,3 +545,481 @@ def get_case_analytics(case_id):
     }
 
     return jsonify(analytics_data), 200
+
+# ============================================================================
+# IMAGE ROUTES
+# ============================================================================
+
+@practice_cases.route('/generate_image/<int:case_id>', methods=['POST'])
+@jwt_required()
+@handle_db_error("generate case image")
+def generate_case_image(case_id):
+    """
+    Generates an image for a practice case using base64 format and saves it.
+    Accepts 'include_person' parameter to determine if avatar should be included.
+    """
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    case = PracticeCase.query.get(case_id)
+    if not case:
+        return jsonify({"error": "Practice case not found"}), 404
+
+    # Authorization check
+    if not can_user_modify_case(user, case):
+        return jsonify({"error": "Unauthorized to modify this practice case"}), 403
+
+    if not case.situation_instructions or not case.behavioral_guidelines:
+        return jsonify({"error": "Case must have situation and behavioral guidelines to generate an image."}), 400
+
+    # Get include_person parameter from request body
+    data = request.get_json() or {}
+    include_person = data.get('include_person', False)
+
+    try:
+        # Use the method that generates AND saves the image
+        new_image = ImageService.generate_and_save_image(case, include_person=include_person)
+        return jsonify(new_image.to_dict()), 201
+    except (ValueError, ImageGenerationError) as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"Unhandled exception during image generation for case {case_id}: {e}")
+        return jsonify({"error": "An unexpected server error occurred."}), 500
+
+
+@practice_cases.route('/delete_image/<int:image_id>', methods=['DELETE'])
+@jwt_required()
+@handle_db_error("delete case image")
+def delete_case_image(image_id):
+    """
+    Deletes an image and its associated file by calling the ImageService.
+    """
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        ImageService.delete_image_and_file(image_id, user)
+        return jsonify({"message": "Image deleted successfully"}), 200
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except PermissionError as e:
+        return jsonify({"error": str(e)}), 403
+    except Exception as e:
+        current_app.logger.error(f"Unhandled exception during image deletion for image {image_id}: {e}")
+        return jsonify({"error": "An unexpected server error occurred."}), 500
+
+# ============================================================================
+# GLOBAL LIBRARY ROUTES
+# ============================================================================
+
+@practice_cases.route('/submit_to_library/<int:case_id>', methods=['POST'])
+@jwt_required()
+@handle_db_error("submit case to library")
+def submit_case_to_library(case_id):
+    """Submit a practice case to the global library for review"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    case = PracticeCase.query.filter_by(id=case_id).first()
+    if not case:
+        return jsonify({"error": "Case not found"}), 404
+    
+    # Check authorization - user must be able to modify this case
+    if not can_user_modify_case(user, case):
+        return jsonify({"error": "Unauthorized to submit this practice case"}), 403
+    
+    if case.submitted_to_library:
+        return jsonify({"error": "Case already submitted to library"}), 400
+
+    data = request.get_json() or {}
+    author_name = data.get("author_name", "").strip()
+    author_institution = data.get("author_institution", "").strip()
+    tags = data.get("tags", [])
+    
+    if not author_name:
+        return jsonify({"error": "Author name is required"}), 400
+    
+    # Validate case is ready for publication using existing validation
+    can_publish, errors = case.can_be_published()
+    if not can_publish:
+        return jsonify({"error": f"Case not ready for library: {', '.join(errors)}"}), 400
+    
+    # Submit to library using the model method
+    try:
+        case.submit_to_library(author_name, author_institution or None, tags)
+        case.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        
+        current_app.logger.info(f"Practice case {case_id} submitted and auto-approved for library by user {user.id}")
+        return jsonify({
+            "message": "Case added to library successfully",
+            "case": case.to_dict()
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@practice_cases.route('/library', methods=['GET'])
+@jwt_required()
+@handle_db_error("fetch library cases")
+def get_library_cases():
+    """Get all approved library cases with filtering and sorting"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Get query parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = min(request.args.get('per_page', 50, type=int), 100)  # Limit to 100
+    language = request.args.get('language', '').strip()
+    tag = request.args.get('tag', '').strip()
+    sort_by = request.args.get('sort', 'newest')
+    search = request.args.get('search', '').strip()
+    
+    # Base query for approved library cases
+    query = PracticeCase.query.filter_by(library_approved=True)
+    
+    # Apply search filter
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            db.or_(
+                PracticeCase.title.ilike(search_term),
+                PracticeCase.description.ilike(search_term),
+                PracticeCase.author_name.ilike(search_term),
+                PracticeCase.library_tags.ilike(search_term)
+            )
+        )
+    
+    # Apply language filter
+    if language:
+        query = query.filter(PracticeCase.target_language.ilike(f"%{language}%"))
+    
+    # Apply tag filter (simple contains check)
+    if tag:
+        query = query.filter(PracticeCase.library_tags.contains(f'"{tag}"'))
+    
+    # Apply sorting
+    if sort_by == 'newest':
+        query = query.order_by(PracticeCase.library_approved_at.desc())
+    elif sort_by == 'oldest':
+        query = query.order_by(PracticeCase.library_approved_at.asc())
+    elif sort_by == 'popular':
+        query = query.order_by(PracticeCase.library_downloads.desc())
+    elif sort_by == 'rating':
+        query = query.order_by(PracticeCase.library_rating.desc().nullslast())
+    elif sort_by == 'title':
+        query = query.order_by(PracticeCase.title.asc())
+    else:
+        # Default to newest
+        query = query.order_by(PracticeCase.library_approved_at.desc())
+    
+    # Paginate results
+    try:
+        pagination = query.paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error paginating library cases: {e}")
+        return jsonify({"error": "Invalid pagination parameters"}), 400
+    
+    # Convert to library dict format
+    cases = []
+    for case in pagination.items:
+        library_dict = case.to_library_dict()
+        if library_dict:  # Only include if properly formatted
+            cases.append(library_dict)
+    
+    return jsonify({
+        "cases": cases,
+        "pagination": {
+            "page": page,
+            "pages": pagination.pages,
+            "per_page": per_page,
+            "total": pagination.total,
+            "has_next": pagination.has_next,
+            "has_prev": pagination.has_prev
+        }
+    }), 200
+
+
+@practice_cases.route('/library/stats', methods=['GET'])
+@jwt_required()
+@handle_db_error("fetch library statistics")
+def get_library_stats():
+    """Get statistics about the library"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        # Get total cases and downloads
+        total_cases = PracticeCase.query.filter_by(library_approved=True).count()
+        
+        # Get total downloads (handle None values)
+        downloads_result = db.session.query(
+            db.func.coalesce(db.func.sum(PracticeCase.library_downloads), 0)
+        ).filter_by(library_approved=True).scalar()
+        total_downloads = downloads_result or 0
+        
+        # Get popular languages
+        language_counts = db.session.query(
+            PracticeCase.target_language,
+            db.func.count(PracticeCase.id).label('count')
+        ).filter(
+            PracticeCase.library_approved == True,
+            PracticeCase.target_language.isnot(None),
+            PracticeCase.target_language != ''
+        ).group_by(PracticeCase.target_language).order_by(db.desc('count')).limit(10).all()
+        
+        popular_languages = [lang[0] for lang in language_counts]
+        
+        # Get popular tags (parse JSON tags)
+        import json
+        tag_query = db.session.query(PracticeCase.library_tags).filter(
+            PracticeCase.library_approved == True,
+            PracticeCase.library_tags.isnot(None),
+            PracticeCase.library_tags != ''
+        ).all()
+        
+        all_tags = []
+        for tag_row in tag_query:
+            if tag_row[0]:
+                try:
+                    tags = json.loads(tag_row[0])
+                    if isinstance(tags, list):
+                        all_tags.extend(tags)
+                except (json.JSONDecodeError, TypeError):
+                    # Skip invalid JSON
+                    continue
+        
+        # Count tag frequency
+        tag_counts = {}
+        for tag in all_tags:
+            if tag and isinstance(tag, str):
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        
+        # Get top 20 tags
+        popular_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:20]
+        popular_tags = [tag[0] for tag in popular_tags]
+        
+        return jsonify({
+            "total_cases": total_cases,
+            "total_downloads": total_downloads,
+            "popular_languages": popular_languages,
+            "popular_tags": popular_tags
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error getting library stats: {e}")
+        return jsonify({"error": "Failed to fetch library statistics"}), 500
+
+
+@practice_cases.route('/copy_from_library/<int:case_id>', methods=['POST'])
+@jwt_required()
+@handle_db_error("copy case from library")
+def copy_case_from_library(case_id):
+    """Copy a library case to user's classes"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Get the library case
+    library_case = PracticeCase.query.filter_by(
+        id=case_id, 
+        library_approved=True
+    ).first()
+    
+    if not library_case:
+        return jsonify({"error": "Library case not found"}), 404
+
+    data = request.get_json() or {}
+    class_id = data.get("class_id")
+    
+    # If class_id provided, validate user has access to it
+    if class_id:
+        accessible_class_ids = get_user_accessible_class_ids(user)
+        if class_id not in accessible_class_ids:
+            return jsonify({"error": "Unauthorized to create cases for this class"}), 403
+
+    # Create copy using the model method
+    try:
+        new_case = library_case.create_copy_from_library(class_id, user.id)
+        
+        # Save the new case and update download count
+        db.session.add(new_case)
+        # Note: download count is updated in the model method
+        db.session.commit()
+        
+        current_app.logger.info(f"Library case {case_id} copied by user {user.id} to class {class_id}")
+        return jsonify({
+            "message": "Case copied successfully",
+            "case": new_case.to_dict()
+        }), 201
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"Error copying library case {case_id}: {e}")
+        return jsonify({"error": "Failed to copy case"}), 500
+
+
+@practice_cases.route('/rate_library_case/<int:case_id>', methods=['POST'])
+@jwt_required()
+@handle_db_error("rate library case")
+def rate_library_case(case_id):
+    """Rate a library case (simplified rating system)"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    case = PracticeCase.query.filter_by(
+        id=case_id,
+        library_approved=True
+    ).first()
+    
+    if not case:
+        return jsonify({"error": "Library case not found"}), 404
+
+    data = request.get_json() or {}
+    rating = data.get("rating")
+    
+    if not rating or not isinstance(rating, (int, float)) or rating < 1 or rating > 5:
+        return jsonify({"error": "Rating must be a number between 1 and 5"}), 400
+
+    # Simple average rating calculation (you might want to create a separate ratings table)
+    if case.library_rating is None:
+        case.library_rating = float(rating)
+        case.library_rating_count = 1
+    else:
+        # Calculate new average
+        total_points = case.library_rating * case.library_rating_count
+        case.library_rating_count += 1
+        case.library_rating = (total_points + rating) / case.library_rating_count
+
+    case.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+    
+    current_app.logger.info(f"User {user.id} rated library case {case_id}: {rating}")
+    return jsonify({
+        "message": "Rating submitted successfully",
+        "new_rating": case.library_rating,
+        "rating_count": case.library_rating_count
+    }), 200
+
+
+# ============================================================================
+# ADMIN LIBRARY ROUTES (for managing library submissions)
+# ============================================================================
+
+@practice_cases.route('/library/admin/pending', methods=['GET'])
+@jwt_required()
+@handle_db_error("fetch pending library cases")
+def get_pending_library_cases():
+    """Admin endpoint to get cases pending library approval"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Check if user is admin/master (you might want to create a more specific admin role)
+    if not user.is_master:
+        return jsonify({"error": "Unauthorized - admin access required"}), 403
+
+    try:
+        pending_cases = PracticeCase.query.filter_by(
+            submitted_to_library=True,
+            library_approved=False
+        ).order_by(PracticeCase.library_submitted_at.desc()).all()
+        
+        cases = [case.to_dict() for case in pending_cases]
+        
+        return jsonify({"cases": cases}), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error fetching pending library cases: {e}")
+        return jsonify({"error": "Failed to fetch pending cases"}), 500
+
+
+@practice_cases.route('/library/admin/approve/<int:case_id>', methods=['POST'])
+@jwt_required()
+@handle_db_error("approve library case")
+def approve_library_case(case_id):
+    """Admin endpoint to approve a case for the library"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Check if user is admin/master
+    if not user.is_master:
+        return jsonify({"error": "Unauthorized - admin access required"}), 403
+
+    case = PracticeCase.query.filter_by(
+        id=case_id,
+        submitted_to_library=True,
+        library_approved=False
+    ).first()
+    
+    if not case:
+        return jsonify({"error": "Case not found or not pending approval"}), 404
+
+    try:
+        case.approve_for_library(user.id)
+        case.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+        
+        current_app.logger.info(f"Library case {case_id} approved by admin user {user.id}")
+        return jsonify({
+            "message": "Case approved for library",
+            "case": case.to_dict()
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@practice_cases.route('/library/admin/reject/<int:case_id>', methods=['POST'])
+@jwt_required()
+@handle_db_error("reject library case")
+def reject_library_case(case_id):
+    """Admin endpoint to reject a case for the library"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Check if user is admin/master
+    if not user.is_master:
+        return jsonify({"error": "Unauthorized - admin access required"}), 403
+
+    case = PracticeCase.query.filter_by(
+        id=case_id,
+        submitted_to_library=True,
+        library_approved=False
+    ).first()
+    
+    if not case:
+        return jsonify({"error": "Case not found or not pending approval"}), 404
+
+    data = request.get_json() or {}
+    rejection_reason = data.get("reason", "").strip()
+
+    # Reset library submission status
+    case.submitted_to_library = False
+    case.library_submitted_at = None
+    case.author_name = None
+    case.author_institution = None
+    case.library_tags = None
+    case.updated_at = datetime.now(timezone.utc)
+    
+    db.session.commit()
+    
+    current_app.logger.info(f"Library case {case_id} rejected by admin user {user.id}. Reason: {rejection_reason}")
+    return jsonify({
+        "message": "Case rejected and removed from library queue",
+        "case": case.to_dict()
+    }), 200
