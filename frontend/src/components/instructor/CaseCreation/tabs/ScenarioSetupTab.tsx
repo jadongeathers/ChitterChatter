@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { MessageSquare, ChevronLeft, ChevronRight, Bot, Volume2, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import ImageManager from '@/components/instructor/ImageManager';
+import { CHARACTER_LIMITS, CharacterCounter } from '@/constants/characterLimits';
 
 // --- Interfaces ---
 interface PracticeCase {
@@ -134,6 +135,8 @@ const ScenarioSetupTab: React.FC<ScenarioSetupTabProps> = ({
 }) => {
   const initiallyParsed = parseSettingsFromGuidelines(practiceCase?.behavioral_guidelines);
 
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
   // Keep your advanced collapsible
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
@@ -155,12 +158,19 @@ const ScenarioSetupTab: React.FC<ScenarioSetupTabProps> = ({
     }));
   }, [practiceCase?.behavioral_guidelines]);
 
-  // When the case’s speaking_speed changes upstream, sync it.
+  // When the case's speaking_speed changes upstream, sync it.
   useEffect(() => {
     if (practiceCase?.speaking_speed) {
       setLocalSettings(prev => ({ ...prev, speaking_speed: practiceCase.speaking_speed! }));
     }
   }, [practiceCase?.speaking_speed]);
+
+  // Helper function for character-limited field changes
+  const handleFieldChange = (field: string, value: string, limit: number) => {
+    if (value.length <= limit) {
+      onFieldChange(field, value);
+    }
+  };
 
   // Handle control changes.
   const handleControlChange = (
@@ -190,11 +200,13 @@ const ScenarioSetupTab: React.FC<ScenarioSetupTabProps> = ({
 
   // Manual edits to base guidelines: re-append formality/length IMPORTANTs.
   const handleBehavioralGuidelinesChange = (value: string) => {
-    const enhanced = generateEnhancedBehavioralGuidelines(value, {
-      formality_level: localSettings.formality_level,
-      response_length: localSettings.response_length
-    });
-    onFieldChange('behavioral_guidelines', enhanced);
+    if (value.length <= CHARACTER_LIMITS.behavioral_guidelines) {
+      const enhanced = generateEnhancedBehavioralGuidelines(value, {
+        formality_level: localSettings.formality_level,
+        response_length: localSettings.response_length
+      });
+      onFieldChange('behavioral_guidelines', enhanced);
+    }
   };
 
   return (
@@ -217,12 +229,20 @@ const ScenarioSetupTab: React.FC<ScenarioSetupTabProps> = ({
             <Textarea
               id="situation"
               value={practiceCase?.situation_instructions || ''}
-              onChange={(e) => onFieldChange('situation_instructions', e.target.value)}
+              onChange={(e) => handleFieldChange('situation_instructions', e.target.value, CHARACTER_LIMITS.situation_instructions)}
+              onFocus={() => setFocusedField('situation_instructions')}
+              onBlur={() => setFocusedField(null)}
+              maxLength={CHARACTER_LIMITS.situation_instructions}
               placeholder="e.g., You are at a traditional Spanish restaurant. The student is a customer who wants to order food..."
               className="min-h-[140px]"
             />
+            <CharacterCounter 
+              current={(practiceCase?.situation_instructions || "").length} 
+              max={CHARACTER_LIMITS.situation_instructions}
+              isVisible={focusedField === 'situation_instructions'}
+            />
             <p className="text-sm text-gray-600">
-              Describe the scenario context and setting for the conversation
+              Describe the scenario context and setting for the conversation to the AI
             </p>
           </div>
 
@@ -233,12 +253,20 @@ const ScenarioSetupTab: React.FC<ScenarioSetupTabProps> = ({
             <Textarea
               id="cultural-context"
               value={practiceCase?.cultural_context || ''}
-              onChange={(e) => onFieldChange('cultural_context', e.target.value)}
+              onChange={(e) => handleFieldChange('cultural_context', e.target.value, CHARACTER_LIMITS.cultural_context)}
+              onFocus={() => setFocusedField('cultural_context')}
+              onBlur={() => setFocusedField(null)}
+              maxLength={CHARACTER_LIMITS.cultural_context}
               placeholder="e.g., This is a formal dining establishment in Madrid where tipping is not expected..."
               className="min-h-[120px]"
             />
+            <CharacterCounter 
+              current={(practiceCase?.cultural_context || "").length} 
+              max={CHARACTER_LIMITS.cultural_context}
+              isVisible={focusedField === 'cultural_context'}
+            />
             <p className="text-sm text-gray-600">
-              Provide cultural background for students and the AI.
+              Provide cultural background to the AI
             </p>
           </div>
         </CardContent>
@@ -264,8 +292,16 @@ const ScenarioSetupTab: React.FC<ScenarioSetupTabProps> = ({
               id="behavioral"
               value={getCleanBehavioralGuidelines(practiceCase?.behavioral_guidelines)}
               onChange={(e) => handleBehavioralGuidelinesChange(e.target.value)}
+              onFocus={() => setFocusedField('behavioral_guidelines')}
+              onBlur={() => setFocusedField(null)}
+              maxLength={CHARACTER_LIMITS.behavioral_guidelines}
               placeholder="e.g., You are a friendly, patient server who speaks clearly..."
               className="min-h-[140px]"
+            />
+            <CharacterCounter 
+              current={getCleanBehavioralGuidelines(practiceCase?.behavioral_guidelines).length} 
+              max={CHARACTER_LIMITS.behavioral_guidelines}
+              isVisible={focusedField === 'behavioral_guidelines'}
             />
             <p className="text-sm text-gray-600">
               Define how the AI should behave, including tone, style, and cultural appropriateness.

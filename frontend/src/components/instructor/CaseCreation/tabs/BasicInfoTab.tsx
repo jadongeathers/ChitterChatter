@@ -1,6 +1,6 @@
 // components/instructor/CaseCreation/tabs/BasicInfoTab.tsx
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Edit, Clock, Globe, ChevronRight } from 'lucide-react';
+import { CHARACTER_LIMITS, CharacterCounter } from '@/constants/characterLimits';
 
 interface PracticeCase {
   id: number;
@@ -38,6 +39,8 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   onNext,
   languageCodeMap
 }) => {
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
   // Helper function to format a date as YYYY-MM-DDTHH:mm in local time
   const formatLocalDateTime = (dateStr: string): string => {
     if (!dateStr) return '';
@@ -49,6 +52,12 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
     const hours = pad(date.getHours());
     const minutes = pad(date.getMinutes());
     return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const handleFieldChange = (field: string, value: string, limit: number) => {
+    if (value.length <= limit) {
+      onFieldChange(field, value);
+    }
   };
 
   return (
@@ -72,9 +81,17 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
             <Input
               id="title"
               value={practiceCase?.title || ""}
-              onChange={(e) => onFieldChange('title', e.target.value)}
+              onChange={(e) => handleFieldChange('title', e.target.value, CHARACTER_LIMITS.title)}
+              onFocus={() => setFocusedField('title')}
+              onBlur={() => setFocusedField(null)}
+              maxLength={CHARACTER_LIMITS.title}
               placeholder="e.g., Ordering at a Restaurant"
               className="!text-base"
+            />
+            <CharacterCounter 
+              current={(practiceCase?.title || "").length} 
+              max={CHARACTER_LIMITS.title}
+              isVisible={focusedField === 'title'}
             />
             <p className="text-sm text-gray-600">
               Choose a clear, descriptive title for your practice case
@@ -88,9 +105,17 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
             <Textarea
               id="description"
               value={practiceCase?.description || ""}
-              onChange={(e) => onFieldChange('description', e.target.value)}
+              onChange={(e) => handleFieldChange('description', e.target.value, CHARACTER_LIMITS.description)}
+              onFocus={() => setFocusedField('description')}
+              onBlur={() => setFocusedField(null)}
+              maxLength={CHARACTER_LIMITS.description}
               placeholder="Describe what students will practice and what to expect..."
               className="min-h-[120px] text-base"
+            />
+            <CharacterCounter 
+              current={(practiceCase?.description || "").length} 
+              max={CHARACTER_LIMITS.description}
+              isVisible={focusedField === 'description'}
             />
             <p className="text-sm text-gray-600">
               Explain the scenario and what students can expect from this practice session

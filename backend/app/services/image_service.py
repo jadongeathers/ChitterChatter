@@ -35,66 +35,44 @@ class ImageService:
     @staticmethod
     def _construct_scene_prompt(case: PracticeCase) -> str:
         """
-        Constructs a detailed prompt for generating realistic, immersive scenario environments.
+        Constructs a detailed prompt for generating realistic scenario environments.
+        Optimized for 600-character input limits.
         """
         situation = case.situation_instructions or ""
         cultural_context = case.cultural_context or ""
         language = case.target_language or ""
         
         # Base prompt structure
-        base_prompt = f"""
-        Create a highly realistic, photographic-quality image that immerses language learning students 
-        in an authentic {language}-speaking environment. This image should make students feel like they are 
-        actually present in the real-world scenario presented below: 
-        
-        SCENARIO:
-        {situation}
-        """
+        base_prompt = f"""Create a highly realistic, photographic-quality image that immerses language learning students in an authentic {language}-speaking environment for this scenario:
+
+    SCENARIO: {situation}"""
         
         # Add cultural context if available
-        cultural_elements = ""
         if cultural_context.strip():
-            cultural_elements = f"""
-            
-            CULTURAL CONTEXT: The environment should authentically reflect this cultural background: 
-            {cultural_context}
-            
-            Ensure all visual elements (architecture, decor, lighting, atmosphere) are 
-            culturally accurate and appropriate for a {language}-speaking region.
-            """
+            base_prompt += f"""
+
+    CULTURAL CONTEXT: {cultural_context}
+    Ensure all visual elements reflect authentic {language}-speaking cultural aesthetics."""
         
-        # Language-specific visual guidance
-        language_guidance = f"""
+        # Specifications (slightly condensed)
+        base_prompt += f"""
+
+    VISUAL REQUIREMENTS:
+    - Professional photography with realistic lighting and immersive perspective
+    - Focus on the environment where this interaction would naturally occur
+    - Include authentic regional design elements for {language}-speaking areas
+    - Capture atmosphere and spatial details that help students feel present
+    - No people in foreground (background figures acceptable)
+    - No readable text, signs, or written characters
+    - Avoid obvious staging; focus on environmental immersion"""
         
-        LANGUAGE & REGIONAL AUTHENTICITY: 
-        - Design the environment to reflect authentic {language}-speaking cultural aesthetics
-        - Include appropriate architectural styles, color schemes, and design elements
-        - Ensure lighting, materials, and spatial arrangements match regional preferences
-        - Incorporate subtle cultural markers that feel natural and unforced
-        """
-        
-        # Technical specifications
-        technical_specs = """
-        
-        VISUAL SPECIFICATIONS:
-        - Style: Professional photography with realistic lighting and immersive perspective
-        - Focus entirely on the realistic environment and setting where students will imagine themselves
-        - Capture authentic atmosphere, proper lighting, and believable spatial details
-        - Show the physical environment where this interaction would naturally occur
-        
-        RESTRICTIONS:
-        - Do not include any people, faces, or human figures in the foreground (they may be present in the background)
-        - Do not include any text, characters, words, letters, or signs with readable text
-        - Avoid any obvious staging or artificial elements
-        - Focus on environmental immersion rather than decorative elements
-        """
-        
-        return (base_prompt + cultural_elements + language_guidance + technical_specs).strip()
+        return base_prompt.strip()
 
     @staticmethod
     def _construct_character_prompt(case: PracticeCase) -> str:
         """
-        Constructs a detailed prompt for generating realistic character portraits with cultural authenticity.
+        Constructs a detailed prompt for generating realistic character portraits.
+        Optimized for 600-character input limits.
         """
         situation = case.situation_instructions or ""
         behavioral_guidelines = case.behavioral_guidelines or ""
@@ -102,65 +80,40 @@ class ImageService:
         language = case.target_language or ""
         
         # Base character prompt
-        base_prompt = f"""
-        Create a highly realistic, photographic-quality portrait of a person who authentically
-        embodies this character according to the character personality guidelines given below:
+        base_prompt = f"""Create a highly realistic, photographic-quality portrait of a person for this {language} language learning scenario:
 
-        CHARACTER GUIDELINES:
-        {behavioral_guidelines}
+    CHARACTER GUIDELINES: {behavioral_guidelines}
+
+    SCENARIO CONTEXT: {situation}"""
         
-        The person should be positioned in this setting given below: 
-        
-        SCENARIO CONTEXT:
-        {situation}
-        """
-        
-        # Cultural authenticity guidance
-        cultural_guidance = ""
+        # Cultural authenticity guidance (condensed)
         if cultural_context.strip():
-            cultural_guidance = f"""
-            
-            CULTURAL AUTHENTICITY: The character should reflect this cultural background: 
-            {cultural_context}
-            
-            Ensure the person's appearance, clothing style, and overall presentation are 
-            culturally appropriate and authentic for someone in a {language}-speaking context.
-            """
+            base_prompt += f"""
+
+    CULTURAL AUTHENTICITY: {cultural_context}
+    Ensure authentic appearance and presentation for {language}-speaking context."""
         
-        # Character appearance and positioning
-        character_specs = f"""
+        # Character specifications (streamlined)
+        base_prompt += f"""
+
+    CHARACTER PRESENTATION:
+    - Appearance, clothing, and styling appropriate for this role in {language}-speaking culture
+    - Authentic cultural elements in dress, accessories, and grooming
+    - Facial expression and body language reflecting their character traits
+    - Position facing camera for natural conversation feeling
+
+    COMPOSITION:
+    - Frame from waist-up or three-quarter length for conversation distance
+    - Professional portrait photography with realistic lighting
+    - Focus on person as conversation partner with setting visible but secondary
+
+    TECHNICAL REQUIREMENTS:
+    - High detail photographic realism with natural, welcoming expression
+    - Lighting that matches the environment and flatters the subject
+    - No readable text, signs, or written characters in the image
+    - Respectful, authentic cultural portrayal without stereotypes"""
         
-        CHARACTER PRESENTATION:
-        - Choose appearance details (age, gender, ethnicity, clothing style) that would be 
-          realistic and appropriate for someone in this role within a {language}-speaking culture
-        - Show authentic cultural styling in clothing, accessories, and grooming
-        - Display appropriate facial expression and body language that reflects their character traits
-        - Position the person facing directly toward the camera to create natural conversation feeling
-        
-        COMPOSITION & FRAMING:
-        - IMPORTANT: Frame from at least waist-up or three-quarter length for natural conversation distance
-        - Position at comfortable social distance - close enough for conversation, not intimate
-        - Use professional portrait photography techniques with realistic lighting
-        - Focus on the person as a conversation partner with background setting visible but secondary
-        """
-        
-        # Technical and restriction specifications
-        technical_specs = """
-        
-        VISUAL QUALITY:
-        - Style: Professional portrait photography with natural, welcoming expression
-        - Lighting: Realistic, flattering lighting that matches the environment
-        - Expression: Natural and appropriate for their role and personality
-        - Quality: High detail, photographic realism
-        
-        RESTRICTIONS:
-        - Do not include any text, words, letters, or signs with readable text in the image
-        - Avoid stereotypical or exaggerated cultural representations
-        - Ensure respectful and authentic cultural portrayal
-        - Focus on natural, professional presentation
-        """
-        
-        return (base_prompt + cultural_guidance + character_specs + technical_specs).strip()
+        return base_prompt.strip()
 
     @staticmethod
     def _construct_prompt(case: PracticeCase, include_person: bool = False) -> str:

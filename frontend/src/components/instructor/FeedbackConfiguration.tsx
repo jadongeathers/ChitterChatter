@@ -16,6 +16,7 @@ import {
   Zap,
   AlertCircle
 } from "lucide-react";
+import { CHARACTER_LIMITS, CharacterCounter } from '@/constants/characterLimits';
 
 interface FeedbackSection {
   id: string;
@@ -106,6 +107,7 @@ const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [newSectionText, setNewSectionText] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   
   // Use a ref to track if it's the initial mount. This prevents
   // onFeedbackChange from firing when the component first loads.
@@ -263,9 +265,11 @@ const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
   };
 
   const handleCustomFeedbackChange = (index: number, value: string) => {
-    const updated = [...customFeedback];
-    updated[index] = value;
-    setCustomFeedback(updated);
+    if (value.length <= CHARACTER_LIMITS.feedback_prompt) {
+      const updated = [...customFeedback];
+      updated[index] = value;
+      setCustomFeedback(updated);
+    }
   };
 
   const handleRemoveCustomFeedback = (index: number) => {
@@ -278,9 +282,23 @@ const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
     }
 
     const newSection = `**${newSectionTitle}**: ${newSectionText}`;
-    setCustomFeedback([...customFeedback, newSection]);
-    setNewSectionTitle("");
-    setNewSectionText("");
+    if (newSection.length <= CHARACTER_LIMITS.feedback_prompt) {
+      setCustomFeedback([...customFeedback, newSection]);
+      setNewSectionTitle("");
+      setNewSectionText("");
+    }
+  };
+
+  const handleNewSectionTitleChange = (value: string) => {
+    if (value.length <= CHARACTER_LIMITS.title) {
+      setNewSectionTitle(value);
+    }
+  };
+
+  const handleNewSectionTextChange = (value: string) => {
+    if (value.length <= CHARACTER_LIMITS.feedback_prompt) {
+      setNewSectionText(value);
+    }
   };
 
   const getCategoryIcon = (category: string) => {
@@ -412,12 +430,20 @@ const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
                 >
                   <div className="flex items-start space-x-3">
                     <Badge variant="outline" className="mt-1">Custom</Badge>
-                    <div className="flex-1">
+                    <div className="flex-1 space-y-2">
                       <Textarea
                         value={feedback}
                         onChange={(e) => handleCustomFeedbackChange(index, e.target.value)}
+                        onFocus={() => setFocusedField(`custom-${index}`)}
+                        onBlur={() => setFocusedField(null)}
+                        maxLength={CHARACTER_LIMITS.feedback_prompt}
                         className="min-h-[80px]"
                         placeholder="Enter custom feedback instructions..."
+                      />
+                      <CharacterCounter 
+                        current={feedback.length} 
+                        max={CHARACTER_LIMITS.feedback_prompt}
+                        isVisible={focusedField === `custom-${index}`}
                       />
                     </div>
                     <Button
@@ -438,24 +464,40 @@ const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 space-y-4">
             <h4 className="font-medium text-gray-700">Add New Feedback Section</h4>
             <div className="space-y-3">
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="section-title">Section Title</Label>
                 <Input
                   id="section-title"
                   value={newSectionTitle}
-                  onChange={(e) => setNewSectionTitle(e.target.value)}
+                  onChange={(e) => handleNewSectionTitleChange(e.target.value)}
+                  onFocus={() => setFocusedField('new-section-title')}
+                  onBlur={() => setFocusedField(null)}
+                  maxLength={CHARACTER_LIMITS.title}
                   placeholder="e.g., Pronunciation & Accent"
                   className="mt-1"
                 />
+                <CharacterCounter 
+                  current={newSectionTitle.length} 
+                  max={CHARACTER_LIMITS.title}
+                  isVisible={focusedField === 'new-section-title'}
+                />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="section-text">Feedback Instructions</Label>
                 <Textarea
                   id="section-text"
                   value={newSectionText}
-                  onChange={(e) => setNewSectionText(e.target.value)}
+                  onChange={(e) => handleNewSectionTextChange(e.target.value)}
+                  onFocus={() => setFocusedField('new-section-text')}
+                  onBlur={() => setFocusedField(null)}
+                  maxLength={CHARACTER_LIMITS.feedback_prompt}
                   placeholder="Provide instructions for the AI on how to evaluate this area. Include what specific aspects to look for and how to provide constructive feedback..."
                   className="mt-1 min-h-[80px]"
+                />
+                <CharacterCounter 
+                  current={newSectionText.length} 
+                  max={CHARACTER_LIMITS.feedback_prompt}
+                  isVisible={focusedField === 'new-section-text'}
                 />
               </div>
               <Button 

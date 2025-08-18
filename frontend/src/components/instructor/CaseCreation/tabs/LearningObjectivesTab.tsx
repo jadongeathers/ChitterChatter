@@ -1,11 +1,12 @@
 // components/instructor/CaseCreation/tabs/LearningObjectivesTab.tsx
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Target, Users, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { CHARACTER_LIMITS, CharacterCounter } from '@/constants/characterLimits';
 
 interface PracticeCase {
   proficiency_level?: string;
@@ -28,6 +29,14 @@ const LearningObjectivesTab: React.FC<LearningObjectivesTabProps> = ({
   onNext,
   onPrevious
 }) => {
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const handleFieldChange = (field: string, value: string, limit: number) => {
+    if (value.length <= limit) {
+      onFieldChange(field, value);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Student Profile */}
@@ -49,9 +58,17 @@ const LearningObjectivesTab: React.FC<LearningObjectivesTabProps> = ({
             <Textarea
               id="proficiency"
               value={practiceCase?.proficiency_level || ""}
-              onChange={(e) => onFieldChange('proficiency_level', e.target.value)}
+              onChange={(e) => handleFieldChange('proficiency_level', e.target.value, CHARACTER_LIMITS.proficiency_level)}
+              onFocus={() => setFocusedField('proficiency_level')}
+              onBlur={() => setFocusedField(null)}
+              maxLength={CHARACTER_LIMITS.proficiency_level}
               placeholder="e.g., Intermediate level students who can form basic sentences but need practice with specific vocabulary..."
               className="min-h-[100px]"
+            />
+            <CharacterCounter 
+              current={(practiceCase?.proficiency_level || "").length} 
+              max={CHARACTER_LIMITS.proficiency_level}
+              isVisible={focusedField === 'proficiency_level'}
             />
             <p className="text-sm text-gray-600">
               This helps the AI adjust its language complexity and speaking pace appropriately
@@ -79,9 +96,17 @@ const LearningObjectivesTab: React.FC<LearningObjectivesTabProps> = ({
             <Textarea
               id="goals"
               value={practiceCase?.curricular_goals || ""}
-              onChange={(e) => onFieldChange('curricular_goals', e.target.value)}
+              onChange={(e) => handleFieldChange('curricular_goals', e.target.value, CHARACTER_LIMITS.curricular_goals)}
+              onFocus={() => setFocusedField('curricular_goals')}
+              onBlur={() => setFocusedField(null)}
+              maxLength={CHARACTER_LIMITS.curricular_goals}
               placeholder="e.g., Practice food-related vocabulary, work on the simple past, practice polite phrases..."
               className="min-h-[120px]"
+            />
+            <CharacterCounter 
+              current={(practiceCase?.curricular_goals || "").length} 
+              max={CHARACTER_LIMITS.curricular_goals}
+              isVisible={focusedField === 'curricular_goals'}
             />
             <p className="text-sm text-gray-600">
               List the specific learning objectives students should achieve
@@ -95,9 +120,17 @@ const LearningObjectivesTab: React.FC<LearningObjectivesTabProps> = ({
             <Textarea
               id="key-items"
               value={practiceCase?.key_items || ""}
-              onChange={(e) => onFieldChange('key_items', e.target.value)}
+              onChange={(e) => handleFieldChange('key_items', e.target.value, CHARACTER_LIMITS.key_items)}
+              onFocus={() => setFocusedField('key_items')}
+              onBlur={() => setFocusedField(null)}
+              maxLength={CHARACTER_LIMITS.key_items}
               placeholder="e.g., Menu items, payment methods, customer service expressions, medical considerations..."
               className="min-h-[120px]"
+            />
+            <CharacterCounter 
+              current={(practiceCase?.key_items || "").length} 
+              max={CHARACTER_LIMITS.key_items}
+              isVisible={focusedField === 'key_items'}
             />
             <p className="text-sm text-gray-600">
               Important words, phrases, or expressions students should use or encounter
@@ -125,9 +158,17 @@ const LearningObjectivesTab: React.FC<LearningObjectivesTabProps> = ({
             <Textarea
               id="notes-for-students"
               value={practiceCase?.notes_for_students || ""}
-              onChange={(e) => onFieldChange('notes_for_students', e.target.value)}
+              onChange={(e) => handleFieldChange('notes_for_students', e.target.value, CHARACTER_LIMITS.notes_for_students)}
+              onFocus={() => setFocusedField('notes_for_students')}
+              onBlur={() => setFocusedField(null)}
+              maxLength={CHARACTER_LIMITS.notes_for_students}
               placeholder="Useful phrases to try, cultural etiquette tips, conversation goals, pronunciation reminders..."
               className="min-h-[120px]"
+            />
+            <CharacterCounter 
+              current={(practiceCase?.notes_for_students || "").length} 
+              max={CHARACTER_LIMITS.notes_for_students}
+              isVisible={focusedField === 'notes_for_students'}
             />
             <p className="text-sm text-gray-600">
               Reference material and guidance shown in the student interface during practice
