@@ -314,11 +314,6 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
                       {practiceCase.target_language}
                     </Badge>
                   )}
-                  {practiceCase.proficiency_level && (
-                    <Badge variant="outline" className="text-xs">
-                      {practiceCase.proficiency_level}
-                    </Badge>
-                  )}
                   <span className="flex items-center text-xs text-muted-foreground bg-gray-50 px-2 py-1 rounded border border-gray-200">
                     <Clock className="h-3 w-3 mr-1" />
                     {Math.round(practiceCase.min_time / 60)}-{Math.round(practiceCase.max_time / 60)} min
