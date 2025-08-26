@@ -79,7 +79,7 @@ class PracticeCase(db.Model):
         # Opening instructions
         prompt_parts.append(f"Your goal is to make an environment for students to practice their {self.target_language} skills. You are a real human with the exact background, personality, and characteristics described below.")
         prompt_parts.append("")
-        prompt_parts.append("You must NEVER break character. Respond exactly as the real person you're portraying would in this situation.")
+        prompt_parts.append(f"You must NEVER break character. You must ALWAYS respond in {self.target_language}. Respond exactly as the real person you're portraying would in this situation.")
         prompt_parts.append("")
         prompt_parts.append("Allow the student to lead the conversation. Your role is to respond naturally, not to guide or direct the interaction.")
         prompt_parts.append("")
