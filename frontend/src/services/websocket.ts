@@ -146,7 +146,7 @@ export const setupWebRTCConnection = async (
     // Realtime API (WebRTC SDP exchange)
     const baseUrl = "https://api.openai.com/v1/realtime";
     // Keep model consistent with your backend; either use the dated one or plain preview
-    const model = "gpt-4o-realtime-preview";
+    const model = "gpt-realtime";
 
     console.log(`Connecting to ${baseUrl}?model=${model}`);
     console.log("SDP offer ready to send:", offer.sdp.substring(0, 100) + "...");

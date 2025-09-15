@@ -89,7 +89,7 @@ class VoiceService:
 
             payload = {
                 # You can use the stable alias:
-                "model": "gpt-4o-realtime-preview",
+                "model": "gpt-realtime",
                 "voice": voice,
                 "instructions": prompt_text,
                 "input_audio_transcription": {
