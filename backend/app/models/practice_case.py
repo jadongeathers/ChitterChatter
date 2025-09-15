@@ -94,7 +94,7 @@ class PracticeCase(db.Model):
         )
         prompt_parts.append("")
         prompt_parts.append(
-            "Your responses should be as concise, casual, and conversational as possible, unless otherwise stated. "
+            "IMPORTANT: Your responses should be as concise, casual, and conversational as possible, unless otherwise stated. "
             "Avoid textbook or overly polite phrasing. Use everyday expressions, contractions, and slang appropriate to your character."
         )
         prompt_parts.append("")
@@ -108,6 +108,12 @@ class PracticeCase(db.Model):
             "Immediately act as your character would in a real-life version of this scenario."
         )
         prompt_parts.append("")
+        prompt_parts.append(
+            "RESPONSES MUST BE SHORT: 1–2 sentences MAX."
+        )
+        prompt_parts.append(
+            "If a longer reply seems needed, pick the most important idea and keep it under the limits."
+        )
         
         # Dynamic section numbering
         section_num = 1
@@ -157,9 +163,11 @@ class PracticeCase(db.Model):
         if self.instructor_notes and self.instructor_notes.strip():
             prompt_parts.append(f"{section_num}. **Instructor Notes**:")
             prompt_parts.append(self.instructor_notes.strip())
-        
-        return "\n".join(prompt_parts).strip()
+    
+        prompt_parts.append("FINAL REMINDER: You MUST keep it short (≤2 sentences). Be casual. Stay in character.")
 
+        return "\n".join(prompt_parts).strip()
+    
     def update_system_prompt(self):
         """Update the system_prompt field with generated content"""
         self.system_prompt = self.generate_system_prompt()
