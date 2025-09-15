@@ -2,13 +2,13 @@
 export const CHARACTER_LIMITS = {
   // Basic info
   title: 150,
-  description: 600,
+  description: 1200,
   
   // Learning objectives  
   proficiency_level: 600,
   curricular_goals: 800,
   key_items: 600,
-  notes_for_students: 600,
+  notes_for_students: 1200,
   
   // Scenario setup - these are the critical ones for image generation
   situation_instructions: 800,    // Most important, give more space
