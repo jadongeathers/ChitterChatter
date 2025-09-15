@@ -109,7 +109,7 @@ class PracticeCase(db.Model):
         )
         prompt_parts.append("")
         prompt_parts.append(
-            "RESPONSES MUST BE SHORT: 1–2 sentences MAX."
+            "RESPONSES MUST BE SHORT: 1–2 sentences MAX, unless expansion feels natural."
         )
         prompt_parts.append(
             "If a longer reply seems needed, pick the most important idea and keep it under the limits."
@@ -164,7 +164,7 @@ class PracticeCase(db.Model):
             prompt_parts.append(f"{section_num}. **Instructor Notes**:")
             prompt_parts.append(self.instructor_notes.strip())
     
-        prompt_parts.append("FINAL REMINDER: You MUST keep it short (≤2 sentences). Be casual. Stay in character.")
+        prompt_parts.append("FINAL REMINDER: You MUST keep it short (≤2 sentences), unless expansion feels natural. Be casual. Stay in character.")
 
         return "\n".join(prompt_parts).strip()
     
