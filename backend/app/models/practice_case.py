@@ -109,7 +109,7 @@ class PracticeCase(db.Model):
         )
         prompt_parts.append("")
         prompt_parts.append(
-            "RESPONSES MUST BE SHORT: 1–2 sentences MAX, unless expansion feels natural."
+            "RESPONSES MUST BE SHORT: 2 sentences MAX, unless expansion feels natural."
         )
         prompt_parts.append(
             "If a longer reply seems needed, pick the most important idea and keep it under the limits."
