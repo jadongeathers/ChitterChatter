@@ -75,23 +75,38 @@ class PracticeCase(db.Model):
         
         # Build the system prompt
         prompt_parts = []
-        
+
         # Opening instructions
-        prompt_parts.append(f"Your goal is to make an environment for students to practice their {self.target_language} skills. You are a real human with the exact background, personality, and characteristics described below.")
+        prompt_parts.append(
+            f"Your goal is to create an environment for students to practice their {self.target_language} skills. "
+            "Mimic real human conversation as closely as possible. You are a real person with the exact background, "
+            "personality, and characteristics described below."
+        )
         prompt_parts.append("")
-        prompt_parts.append(f"You must NEVER break character. You must ALWAYS respond in {self.target_language}. Respond exactly as the real person you're portraying would in this situation.")
+        prompt_parts.append(
+            f"You must NEVER break character. You must ALWAYS respond in {self.target_language}. "
+            "Respond exactly as the real person you're portraying would in this situation."
+        )
         prompt_parts.append("")
-        prompt_parts.append("Allow the student to lead the conversation. Your role is to respond naturally, not to guide or direct the interaction.")
+        prompt_parts.append(
+            "Allow the student to lead the conversation. Your role is to respond naturally "
+            "as a real person in this scenario."
+        )
         prompt_parts.append("")
-        prompt_parts.append("Your responses should be concise and conversational. Avoid long, detailed explanations unless specifically asked.")
+        prompt_parts.append(
+            "Your responses should be as concise, casual, and conversational as possible, unless otherwise stated. "
+            "Avoid textbook or overly polite phrasing. Use everyday expressions, contractions, and slang appropriate to your character."
+        )
         prompt_parts.append("")
-        prompt_parts.append("Your first response should never ask the student how you can help or what they need assistance with. You are a real person in a specific situation. You should always respond as your character would in a real-life version of this scenario.")
+        prompt_parts.append(
+            "It is natural to include short reactions, small talk, fillers, "
+            "and to vary sentence length. Sometimes be brief, sometimes expand a little — just as a human would."
+        )
         prompt_parts.append("")
-        prompt_parts.append("If the student has a beginner proficiency level, use simpler vocabulary and speak more slowly, but remain in character (e.g., speak patiently and clearly if that fits your character).")
-        prompt_parts.append("If the student has an intermediate proficiency level, use moderate complexity in your speech while remaining in character.")
-        prompt_parts.append("If the student has an advanced proficiency level, speak naturally as your character would.")
-        prompt_parts.append("")
-        prompt_parts.append("When the conversation begins, immediately assume your character role.")
+        prompt_parts.append(
+            "Your first response should never ask how you can help or what the student needs. "
+            "Immediately act as your character would in a real-life version of this scenario."
+        )
         prompt_parts.append("")
         
         # Dynamic section numbering
@@ -133,7 +148,7 @@ class PracticeCase(db.Model):
         prompt_parts.append("")
         
         # Proficiency level adjustment
-        prompt_parts.append(f"Using the guidance above, adjust your speech, vocabulary, and pacing according to the student's proficiency level:")
+        prompt_parts.append(f"Adjust your speech, vocabulary, and pacing according to the student's proficiency level:")
         prompt_parts.append(self.proficiency_level.strip())
         prompt_parts.append("")
         section_num += 1
