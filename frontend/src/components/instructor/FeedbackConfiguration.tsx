@@ -108,45 +108,31 @@ const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
   const [newSectionText, setNewSectionText] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  
-  // Use a ref to track if it's the initial mount. This prevents
-  // onFeedbackChange from firing when the component first loads.
-  const isMounted = useRef(false);
 
-  // This effect synchronizes the component's state with the incoming `initialFeedbackPrompt`.
-  // It runs whenever a new case is loaded (i.e., when `initialFeedbackPrompt` changes).
+  // Prevent any emits during initial hydration
+  const hasHydratedRef = useRef(false);
+
+  /** ---------- Parse from initial prompt (no emits on mount) ---------- */
   useEffect(() => {
     if (initialFeedbackPrompt?.trim()) {
       parseFeedbackPrompt(initialFeedbackPrompt);
     } else {
-      // If there's no prompt, reset to the default state.
       setFeedbackSections(getPredefinedSections());
       setCustomFeedback([]);
     }
+    hasHydratedRef.current = true; // subsequent user actions may emit
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFeedbackPrompt]);
 
-  // Validate cultural context requirements
   useEffect(() => {
     validateCulturalContext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedbackSections, culturalContext]);
 
-  // This effect notifies the parent component of changes, but ONLY after the initial mount.
-  useEffect(() => {
-    if (isMounted.current && !validationError) {
-      const newPrompt = generateFeedbackPrompt();
-      onFeedbackChange(newPrompt);
-    } else {
-      // After the first render, set the ref to true for all subsequent renders.
-      isMounted.current = true;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedbackSections, customFeedback, validationError]);
+  /** ---------- Helpers ---------- */
 
   const validateCulturalContext = () => {
     const culturalSectionChecked = feedbackSections.find(s => s.id === 'cultural')?.isChecked;
-    
     if (culturalSectionChecked && (!culturalContext || !culturalContext.trim())) {
       setValidationError("Cultural context is required when Cultural Appropriateness feedback is selected. Please add cultural context in the Scenario Setup tab.");
     } else {
@@ -156,137 +142,118 @@ const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
 
   const parseFeedbackPrompt = (prompt: string) => {
     const predefined = getPredefinedSections();
-    
-    // Check which predefined sections are included in the prompt
+
+    // Determine which predefined sections are present
     const updatedSections = predefined.map((section) => ({
       ...section,
       isChecked: prompt.includes(section.text),
     }));
-    
     setFeedbackSections(updatedSections);
 
-    // Extract custom feedback by removing the base prompt and all predefined sections
+    // Remove base prompt, predefined sections, and known system lines to get custom blocks
     let remainingPrompt = prompt;
-    
-    // Remove base prompt
     if (remainingPrompt.includes(baseFeedbackPrompt)) {
       remainingPrompt = remainingPrompt.replace(baseFeedbackPrompt, "");
     }
-    
-    // Remove all predefined sections
     predefined.forEach(section => {
-      if (prompt.includes(section.text)) {
+      if (remainingPrompt.includes(section.text)) {
         remainingPrompt = remainingPrompt.replace(section.text, "");
       }
     });
-    
-    // Remove the JSON formatting instructions that we add
     const jsonInstructionsPattern = /\*\*IMPORTANT FORMATTING REQUIREMENTS:\*\*[\s\S]*?- Focus only on areas that are actually relevant based on the conversation content/;
     remainingPrompt = remainingPrompt.replace(jsonInstructionsPattern, "");
-    
-    // Split by double newlines and filter out known system content
-    const extractedCustomFeedback = remainingPrompt
-      .split(/\n{2,}/) // Split by double newlines
-      .map(text => text.trim())
-      .filter(text => {
-        // Filter out empty strings and known system content
-        if (!text) return false;
-        
-        // Filter out common system phrases
-        const systemPhrases = [
-          "Below are the specific areas",
-          "Areas to evaluate:",
-          "CULTURAL CONTEXT:",
-          "IMPORTANT FORMATTING REQUIREMENTS:",
-          "Organize your feedback into a clear summary",
-          "For each selected feedback area",
-          "Include specific examples from the transcript",
-          "Conclude with an encouraging message",
-          "Focus only on areas that are actually relevant"
-        ];
-        
-        return !systemPhrases.some(phrase => text.includes(phrase));
-      });
 
-    setCustomFeedback(extractedCustomFeedback);
-  };
-
-  const generateFeedbackPrompt = () => {
-    const selectedSections = feedbackSections
-      .filter(section => section.isChecked)
-      .map(section => {
-        let sectionText = section.text;
-        
-        // Append cultural context for cultural sections
-        if (section.requiresCulturalContext && culturalContext?.trim()) {
-          sectionText += `\n\nCULTURAL CONTEXT: ${culturalContext.trim()}`;
-        }
-        
-        return sectionText;
-      });
-
-    const promptParts = [baseFeedbackPrompt];
-    
-    if (selectedSections.length > 0) {
-      promptParts.push(...selectedSections);
-    }
-    
-    // Only add custom feedback that doesn't contain system instructions
-    const filteredCustomFeedback = customFeedback.filter(feedback => {
-      const systemPhrases = [
+    const extractedCustom = remainingPrompt
+      .split(/\n{2,}/)
+      .map(t => t.trim())
+      .filter(t => t && ![
+        "Below are the specific areas",
+        "Areas to evaluate:",
+        "CULTURAL CONTEXT:",
         "IMPORTANT FORMATTING REQUIREMENTS:",
         "Organize your feedback into a clear summary",
         "For each selected feedback area",
         "Include specific examples from the transcript",
         "Conclude with an encouraging message",
         "Focus only on areas that are actually relevant"
-      ];
-      
-      return !systemPhrases.some(phrase => feedback.includes(phrase));
-    });
-    
-    if (filteredCustomFeedback.length > 0) {
-      promptParts.push(...filteredCustomFeedback);
-    }
+      ].some(phrase => t.includes(phrase)));
 
-    return promptParts
-      .filter(text => text && text.trim())
-      .join("\n\n");
+    setCustomFeedback(extractedCustom);
+  };
+
+  const generateFeedbackPromptFrom = (
+    sections: FeedbackSection[],
+    custom: string[],
+    ctx?: string
+  ) => {
+    const selected = sections
+      .filter(s => s.isChecked)
+      .map(s => {
+        let sectionText = s.text;
+        if (s.requiresCulturalContext && ctx?.trim()) {
+          sectionText += `\n\nCULTURAL CONTEXT: ${ctx.trim()}`;
+        }
+        return sectionText;
+      });
+
+    const promptParts = [baseFeedbackPrompt];
+    if (selected.length > 0) promptParts.push(...selected);
+
+    const systemPhrases = [
+      "IMPORTANT FORMATTING REQUIREMENTS:",
+      "Organize your feedback into a clear summary",
+      "For each selected feedback area",
+      "Include specific examples from the transcript",
+      "Conclude with an encouraging message",
+      "Focus only on areas that are actually relevant"
+    ];
+    const filteredCustom = custom.filter(f => !systemPhrases.some(p => f.includes(p)));
+
+    if (filteredCustom.length > 0) promptParts.push(...filteredCustom);
+
+    return promptParts.filter(Boolean).join("\n\n");
+  };
+
+  /** ---------- User interaction (emit on real changes only) ---------- */
+
+  const emitIfHydrated = (sections: FeedbackSection[], custom: string[]) => {
+    if (!hasHydratedRef.current) return;
+    const prompt = generateFeedbackPromptFrom(sections, custom, culturalContext);
+    onFeedbackChange(prompt);
   };
 
   const handleSectionToggle = (sectionId: string) => {
-    setFeedbackSections(sections => 
-      sections.map(section => 
-        section.id === sectionId 
-          ? { ...section, isChecked: !section.isChecked }
-          : section
-      )
-    );
+    setFeedbackSections(prev => {
+      const next = prev.map(s => s.id === sectionId ? { ...s, isChecked: !s.isChecked } : s);
+      emitIfHydrated(next, customFeedback); // EMIT on checkbox change
+      return next;
+    });
   };
 
   const handleCustomFeedbackChange = (index: number, value: string) => {
-    if (value.length <= CHARACTER_LIMITS.feedback_prompt) {
-      const updated = [...customFeedback];
-      updated[index] = value;
-      setCustomFeedback(updated);
-    }
+    if (value.length > CHARACTER_LIMITS.feedback_prompt) return;
+    const next = [...customFeedback];
+    next[index] = value;
+    setCustomFeedback(next);
+    emitIfHydrated(feedbackSections, next); // EMIT on text change (remove if you only want checkboxes to count)
   };
 
   const handleRemoveCustomFeedback = (index: number) => {
-    setCustomFeedback(customFeedback.filter((_, i) => i !== index));
+    const next = customFeedback.filter((_, i) => i !== index);
+    setCustomFeedback(next);
+    emitIfHydrated(feedbackSections, next);
   };
 
   const handleAddCustomFeedback = () => {
-    if (!newSectionTitle.trim() || !newSectionText.trim()) {
-      return;
-    }
-
+    if (!newSectionTitle.trim() || !newSectionText.trim()) return;
     const newSection = `**${newSectionTitle}**: ${newSectionText}`;
-    if (newSection.length <= CHARACTER_LIMITS.feedback_prompt) {
-      setCustomFeedback([...customFeedback, newSection]);
-      setNewSectionTitle("");
-      setNewSectionText("");
-    }
+    if (newSection.length > CHARACTER_LIMITS.feedback_prompt) return;
+
+    const next = [...customFeedback, newSection];
+    setCustomFeedback(next);
+    setNewSectionTitle("");
+    setNewSectionText("");
+    emitIfHydrated(feedbackSections, next);
   };
 
   const handleNewSectionTitleChange = (value: string) => {
@@ -317,6 +284,7 @@ const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
     }
   };
 
+  /** ---------- UI ---------- */
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Validation Error */}
@@ -463,7 +431,7 @@ const FeedbackConfiguration: React.FC<FeedbackConfigurationProps> = ({
           {/* Add New Custom Section */}
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 space-y-4">
             <h4 className="font-medium text-gray-700">Add New Feedback Section</h4>
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="section-title">Section Title</Label>
                 <Input

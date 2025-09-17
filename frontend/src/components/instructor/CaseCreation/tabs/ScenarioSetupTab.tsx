@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { MessageSquare, ChevronLeft, ChevronRight, Bot, Volume2, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageSquare, ChevronLeft, ChevronRight, Bot, Volume2, Settings, ChevronDown, ChevronUp, ImagePlus } from 'lucide-react';
 import ImageManager from '@/components/instructor/ImageManager';
 import { CHARACTER_LIMITS, CharacterCounter } from '@/constants/characterLimits';
 
@@ -463,13 +463,31 @@ const ScenarioSetupTab: React.FC<ScenarioSetupTabProps> = ({
       </Card>
 
       {/* Scenario Images */}
-      {practiceCase && practiceCase.id > 0 && (
+      {practiceCase && practiceCase?.id > 0 ? (
         <ImageManager
           caseId={practiceCase.id}
           images={practiceCase.images || []}
           onImageUpdate={onImageUpdate}
         />
+      ) : (
+        <Card className="shadow-lg border-0 bg-white mt-6 border-l-4 border-violet-500">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <ImagePlus className="h-5 w-5 text-violet-600" />
+              <span>Scenario Image</span>
+            </CardTitle>
+            <CardDescription>
+              Optionally generate a visual aid for your scenario.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">
+              💡 Please <span className="font-medium">save your case</span> first to enable image generation.
+            </p>
+          </CardContent>
+        </Card>
       )}
+
 
       {/* Tab Navigation */}
       <div className="flex justify-between pt-6 border-t">

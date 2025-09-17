@@ -1,6 +1,6 @@
 // pages/instructor/ReviewCase.tsx
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchWithAuth } from "@/utils/api";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,11 @@ interface PracticeCase {
   created_at?: string;
   feedback_prompt?: string;
   images?: PracticeCaseImage[];
+  // optional fields referenced in other tabs
+  cultural_context?: string;
+  speaking_speed?: "slow" | "normal" | "fast";
+  formality_level?: "casual" | "neutral" | "formal";
+  response_length?: "brief" | "moderate" | "detailed";
 }
 
 interface PracticeCaseImage {
@@ -52,25 +57,25 @@ interface PracticeCaseImage {
 
 // Language mapping for OpenAI transcription
 const languageCodeMap: Record<string, string> = {
-  "English": "en",
-  "Spanish": "es",
-  "French": "fr",
-  "German": "de",
-  "Italian": "it",
-  "Portuguese": "pt",
-  "Dutch": "nl",
-  "Russian": "ru",
-  "Japanese": "ja",
-  "Chinese": "zh",
-  "Korean": "ko",
-  "Arabic": "ar",
-  "Hindi": "hi",
-  "Tagalog": "tl",
-  "Vietnamese": "vi",
-  "Turkish": "tr",
-  "Polish": "pl",
-  "Greek": "el",
-  "Ukrainian": "uk",
+  English: "en",
+  Spanish: "es",
+  French: "fr",
+  German: "de",
+  Italian: "it",
+  Portuguese: "pt",
+  Dutch: "nl",
+  Russian: "ru",
+  Japanese: "ja",
+  Chinese: "zh",
+  Korean: "ko",
+  Arabic: "ar",
+  Hindi: "hi",
+  Tagalog: "tl",
+  Vietnamese: "vi",
+  Turkish: "tr",
+  Polish: "pl",
+  Greek: "el",
+  Ukrainian: "uk",
 };
 
 // OpenAI voice options with descriptions
@@ -82,61 +87,69 @@ const voiceOptions = [
   { id: "echo", name: "Echo", description: "Clear, professional tone" },
   { id: "sage", name: "Sage", description: "Wise, measured voice" },
   { id: "shimmer", name: "Shimmer", description: "Light, pleasant tone" },
-  { id: "verse", name: "Verse", description: "Expressive, dynamic voice" }
+  { id: "verse", name: "Verse", description: "Expressive, dynamic voice" },
 ];
 
 const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
   const { caseId } = useParams<{ caseId: string }>();
   const { selectedClass } = useClass();
   const navigate = useNavigate();
-  
+
   // State management
   const [practiceCase, setPracticeCase] = useState<PracticeCase | null>(null);
-  const [feedbackPrompt, setFeedbackPrompt] = useState("");
+  // CHANGE: removed separate feedbackPrompt state — feedback_prompt now lives inside practiceCase
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [activeTab, setActiveTab] = useState("basics");
+
+  // CHANGE: refs to avoid stale state in autosave/flush-on-leave
+  const practiceCaseRef = useRef<PracticeCase | null>(null);
+  const hasUnsavedChangesRef = useRef<boolean>(false);
+  const latestFeedbackRef = useRef<string>(""); // last feedback_prompt received from Feedback tab
+
+  useEffect(() => {
+    practiceCaseRef.current = practiceCase;
+  }, [practiceCase]);
+
+  useEffect(() => {
+    hasUnsavedChangesRef.current = hasUnsavedChanges;
+  }, [hasUnsavedChanges]);
 
   // Get class_id from URL params or selected class
   const getClassId = () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const urlClassId = urlParams.get('class_id');
+    const urlClassId = urlParams.get("class_id");
     if (urlClassId) return parseInt(urlClassId);
     return selectedClass?.class_id || null;
   };
 
-  // Initialize feedback prompt when practice case loads
-  useEffect(() => {
-    if (practiceCase?.feedback_prompt) {
-      setFeedbackPrompt(practiceCase.feedback_prompt);
-    }
-  }, [practiceCase?.id]); // Changed dependency to only trigger when case ID changes
-
+  // CHANGE: handle feedback changes by updating practiceCase directly
   const handleFeedbackChange = (newFeedbackPrompt: string) => {
-    setFeedbackPrompt(newFeedbackPrompt);
+    latestFeedbackRef.current = newFeedbackPrompt;
+    setPracticeCase((prev) => (prev ? { ...prev, feedback_prompt: newFeedbackPrompt } : prev));
     setHasUnsavedChanges(true);
   };
 
   const handleImageUpdate = (updatedImages: PracticeCaseImage[]) => {
-    setPracticeCase(prev => (prev ? { ...prev, images: updatedImages } : null));
+    setPracticeCase((prev) => (prev ? { ...prev, images: updatedImages } : null));
   };
 
   // Check for success message from URL params (for new case creation)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const successType = urlParams.get('success');
-    
-    if (successType === 'draft_saved') {
-      setStatusMessage({ type: 'success', message: "Draft saved successfully!" });
+    const successType = urlParams.get("success");
+
+    if (successType === "draft_saved") {
+      setStatusMessage({ type: "success", message: "Draft saved successfully!" });
       const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
-    } else if (successType === 'published') {
-      setStatusMessage({ type: 'success', message: "Practice case published successfully!" });
+      window.history.replaceState({}, "", newUrl);
+    } else if (successType === "published") {
+      setStatusMessage({ type: "success", message: "Practice case published successfully!" });
       const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
+      window.history.replaceState({}, "", newUrl);
     }
   }, []);
 
@@ -146,8 +159,8 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       const classId = getClassId();
       if (!classId) {
         setStatusMessage({
-          type: 'error',
-          message: "No class selected. Please go back and select a class."
+          type: "error",
+          message: "No class selected. Please go back and select a class.",
         });
         navigate("/instructor/lessons");
         return;
@@ -173,7 +186,8 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         behavioral_guidelines: "",
         proficiency_level: "",
         instructor_notes: "",
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        feedback_prompt: "", // CHANGE: make it explicit
       });
       setIsLoading(false);
       return;
@@ -184,14 +198,14 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       try {
         const response = await fetchWithAuth(`/api/practice_cases/get_case/${caseId}`);
         if (!response.ok) throw new Error("Failed to fetch practice case");
-        
+
         const data = await response.json();
         setPracticeCase(data);
       } catch (err: unknown) {
         console.error("Error loading practice case:", err);
         setStatusMessage({
-          type: 'error',
-          message: "Failed to load practice case. Please try again."
+          type: "error",
+          message: "Failed to load practice case. Please try again.",
         });
         navigate("/instructor/lessons");
       } finally {
@@ -202,37 +216,39 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     fetchPracticeCase();
   }, [caseId, isNew, selectedClass, navigate]);
 
-  // Auto-save functionality
-  const autoSaveDraft = useCallback(async () => {
-    if (!practiceCase || !hasUnsavedChanges || isNew || !practiceCase.id) return;
-    
-    setIsAutoSaving(true);
-    try {
-      const response = await fetchWithAuth(`/api/practice_cases/update_case/${practiceCase.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...practiceCase,
-          feedback_prompt: feedbackPrompt,
-          is_draft: true
-        }),
-      });
+  // Auto-save functionality (non-blocking; do NOT overwrite local typing state)
+  const autoSaveDraft = useCallback(
+    async (override?: PracticeCase) => {
+      const data = override ?? practiceCaseRef.current; // CHANGE: allow a snapshot override for flush-on-leave
+      if (!data || !hasUnsavedChangesRef.current || isNew || !data.id) return;
 
-      if (response.ok) {
-        const { case: updatedCase } = await response.json();
-        setPracticeCase(updatedCase); 
-        setHasUnsavedChanges(false); // Reset unsaved changes flag
-      } else {
-        console.error("Auto-save failed with status:", response.status);
+      setIsAutoSaving(true);
+      try {
+        const response = await fetchWithAuth(`/api/practice_cases/update_case/${data.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          // CHANGE: don't force is_draft/published; just send current case as-is
+          body: JSON.stringify({
+            ...data,
+          }),
+        });
+
+        if (response.ok) {
+          // CHANGE: don't clobber practiceCase from server during autosave
+          setHasUnsavedChanges(false);
+        } else {
+          console.error("Auto-save failed with status:", response.status);
+        }
+      } catch (error) {
+        console.error("Auto-save failed:", error);
+      } finally {
+        setIsAutoSaving(false);
       }
-    } catch (error) {
-      console.error("Auto-save failed:", error);
-    } finally {
-      setIsAutoSaving(false);
-    }
-  }, [practiceCase, hasUnsavedChanges, isNew, feedbackPrompt]);
+    },
+    [isNew]
+  );
 
   // Auto-save timer
   useEffect(() => {
@@ -240,7 +256,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       const autoSaveTimer = setTimeout(() => {
         autoSaveDraft();
       }, 3000);
-      
+
       return () => clearTimeout(autoSaveTimer);
     }
   }, [hasUnsavedChanges, autoSaveDraft, isNew, practiceCase?.id]);
@@ -255,19 +271,19 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
 
   const handleFieldChange = (field: string, value: any) => {
     setHasUnsavedChanges(true);
-    
-    setPracticeCase(prev => prev ? { ...prev, [field]: value } : null);
-    
+
+    setPracticeCase((prev) => (prev ? { ...prev, [field]: value } : null));
+
     // Update language_code when target_language changes
-    if (field === 'target_language' && languageCodeMap[value]) {
-      setPracticeCase(prev => prev ? { ...prev, language_code: languageCodeMap[value] } : null);
+    if (field === "target_language" && languageCodeMap[value]) {
+      setPracticeCase((prev) => (prev ? { ...prev, language_code: languageCodeMap[value] } : null));
     }
   };
 
   // Validate form for publishing
   const validateForPublishing = () => {
     const errors = [];
-    
+
     if (!practiceCase?.title?.trim()) errors.push("Title is required");
     if (!practiceCase?.description?.trim()) errors.push("Description is required");
     if (!practiceCase?.target_language?.trim()) errors.push("Target language is required");
@@ -278,7 +294,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     if (!practiceCase?.min_time || practiceCase.min_time < 1) errors.push("Minimum time must be at least 1 minute");
     if (!practiceCase?.max_time || practiceCase.max_time < practiceCase.min_time) errors.push("Maximum time must be greater than minimum time");
     if (!practiceCase?.accessible_on) errors.push("Access date and time are required");
-    
+
     return errors;
   };
 
@@ -288,35 +304,35 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
 
   const playVoicePreview = async (voiceId: string) => {
     try {
-      const sampleText = "Hello! I'm here to help you practice your conversation skills. Let's have a great learning session together.";
-      
-      const response = await fetchWithAuth('/api/chatbot/voice/preview', {
-        method: 'POST',
+      const sampleText =
+        "Hello! I'm here to help you practice your conversation skills. Let's have a great learning session together.";
+
+      const response = await fetchWithAuth("/api/chatbot/voice/preview", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           voice: voiceId,
           text: sampleText,
         }),
       });
-  
+
       if (!response.ok) {
-        throw new Error('Failed to generate voice preview');
+        throw new Error("Failed to generate voice preview");
       }
-  
+
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
-      
+
       audio.play();
-      
-      audio.addEventListener('ended', () => {
+
+      audio.addEventListener("ended", () => {
         URL.revokeObjectURL(audioUrl);
       });
-      
     } catch (error) {
-      console.error('Error playing voice preview:', error);
+      console.error("Error playing voice preview:", error);
     }
   };
 
@@ -326,17 +342,14 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     setIsSaving(true);
 
     try {
-      const endpoint = isNew
-        ? "/api/practice_cases/add_case"
-        : `/api/practice_cases/update_case/${caseId}`;
-
+      const endpoint = isNew ? "/api/practice_cases/add_case" : `/api/practice_cases/update_case/${caseId}`;
       const method = isNew ? "POST" : "PUT";
 
+      // CHANGE: feedback_prompt already lives on practiceCase; don't duplicate it
       const payload: any = {
         ...practiceCase,
-        feedback_prompt: feedbackPrompt,
         is_draft: true,
-        published: false
+        published: false,
       };
 
       const response = await fetchWithAuth(endpoint, {
@@ -351,15 +364,15 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       }
 
       if (isNew) {
-        setStatusMessage({ type: 'success', message: "Creating new case..." });
+        setStatusMessage({ type: "success", message: "Draft saved successfully!" });
         const newCase = await response.json();
         setHasUnsavedChanges(false);
-        
-        setTimeout(() => {
-          navigate(`/instructor/review/${newCase.id}?success=draft_saved`, { replace: true });
-        }, 1500);
+        setPracticeCase(newCase);
+
+        // CHANGE: update URL without remount
+        window.history.replaceState({}, "", `/instructor/review/${newCase.id}`);
       } else {
-        setStatusMessage({ type: 'success', message: "Draft saved successfully!" });
+        setStatusMessage({ type: "success", message: "Draft saved successfully!" });
         setHasUnsavedChanges(false);
         const { case: updatedCase } = await response.json();
         setPracticeCase(updatedCase);
@@ -367,8 +380,8 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     } catch (error) {
       console.error("Error saving draft:", error);
       setStatusMessage({
-        type: 'error',
-        message: `Failed to save draft: ${error instanceof Error ? error.message : "Unknown error occurred"}`
+        type: "error",
+        message: `Failed to save draft: ${error instanceof Error ? error.message : "Unknown error occurred"}`,
       });
     } finally {
       setIsSaving(false);
@@ -381,8 +394,8 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     const validationErrors = validateForPublishing();
     if (validationErrors.length > 0) {
       setStatusMessage({
-        type: 'error',
-        message: `Cannot publish: ${validationErrors.join(', ')}`
+        type: "error",
+        message: `Cannot publish: ${validationErrors.join(", ")}`,
       });
       return;
     }
@@ -390,17 +403,13 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     setIsSaving(true);
 
     try {
-      const endpoint = isNew
-        ? "/api/practice_cases/add_case"
-        : `/api/practice_cases/publish_case/${caseId}`;
-        
+      const endpoint = isNew ? "/api/practice_cases/add_case" : `/api/practice_cases/publish_case/${caseId}`;
       const method = isNew ? "POST" : "PUT";
 
       const payload: any = {
         ...practiceCase,
-        feedback_prompt: feedbackPrompt, 
         is_draft: false,
-        published: true
+        published: true,
       };
 
       const response = await fetchWithAuth(endpoint, {
@@ -413,27 +422,29 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to publish practice case");
       }
-      
+
       if (isNew) {
-        setStatusMessage({ type: 'success', message: "Publishing new case..." });
+        setStatusMessage({ type: "success", message: "Publishing new case..." });
         const newCase = await response.json();
         setHasUnsavedChanges(false);
 
-        setTimeout(() => {
-          navigate(`/instructor/review/${newCase.id}?success=published`, { replace: true });
-        }, 1500);
+        // CHANGE: update URL without remount
+        window.history.replaceState({}, "", `/instructor/review/${newCase.id}?success=published`);
+        setPracticeCase(newCase);
       } else {
-        setStatusMessage({ type: 'success', message: "Practice case published successfully!" });
+        setStatusMessage({ type: "success", message: "Practice case published successfully!" });
         setHasUnsavedChanges(false);
         const { case: updatedCase } = await response.json();
         setPracticeCase(updatedCase);
-        sessionStorage.setItem('lessonsPageNeedsRefresh', 'true');
+        sessionStorage.setItem("lessonsPageNeedsRefresh", "true");
       }
     } catch (error) {
       console.error("Error publishing practice case:", error);
       setStatusMessage({
-        type: 'error',
-        message: `Failed to publish practice case: ${error instanceof Error ? error.message : "Unknown error occurred"}`
+        type: "error",
+        message: `Failed to publish practice case: ${
+          error instanceof Error ? error.message : "Unknown error occurred"
+        }`,
       });
     } finally {
       setIsSaving(false);
@@ -446,7 +457,9 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       return;
     }
 
-    if (!window.confirm("Are you sure you want to delete this practice case? This action cannot be undone.")) {
+    if (
+      !window.confirm("Are you sure you want to delete this practice case? This action cannot be undone.")
+    ) {
       return;
     }
 
@@ -463,28 +476,52 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       }
 
       setStatusMessage({
-        type: 'success',
-        message: "Practice case deleted successfully!"
+        type: "success",
+        message: "Practice case deleted successfully!",
       });
       navigate("/instructor/lessons");
     } catch (err: unknown) {
       console.error("Error deleting practice case:", err);
       const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
       setStatusMessage({
-        type: 'error',
-        message: `Failed to delete practice case: ${errorMessage}`
+        type: "error",
+        message: `Failed to delete practice case: ${errorMessage}`,
       });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleCancel = () => {
+  // CHANGE: flush autosave if leaving Feedback tab or leaving page
+  const flushPendingIfAny = useCallback(async () => {
+    const current = practiceCaseRef.current;
+    if (!current || isNew || !current.id || !hasUnsavedChangesRef.current) return;
+
+    // Ensure latest feedback prompt is included (in case state batching hasn't committed yet)
+    const snapshot: PracticeCase = {
+      ...current,
+      feedback_prompt: latestFeedbackRef.current || current.feedback_prompt || "",
+    };
+    await autoSaveDraft(snapshot);
+  }, [autoSaveDraft, isNew]);
+
+  const handleBackToLessons = async () => {
+    await flushPendingIfAny();
+    navigate("/instructor/lessons");
+  };
+
+  const handleCancel = async () => {
+    // CHANGE: cancel also flushes pending autosave
+    await flushPendingIfAny();
     navigate("/instructor/lessons");
   };
 
   // Tab navigation handlers
-  const handleTabNavigation = (tab: string) => {
+  const handleTabNavigation = async (tab: string) => {
+    // CHANGE: when leaving Feedback tab with unsaved changes, flush immediately
+    if (activeTab === "feedback" && tab !== "feedback") {
+      await flushPendingIfAny();
+    }
     setActiveTab(tab);
     window.scrollTo(0, 0);
   };
@@ -507,15 +544,16 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
   return (
     <ClassAwareLayout
       title={isNew ? "Create New Practice Case" : "Edit Practice Case"}
-      description={isNew 
-        ? `Create a new conversation practice scenario for ${selectedClass?.course_code || 'your class'}`
-        : `Editing "${practiceCase?.title || 'Practice Case'}" for ${selectedClass?.course_code || 'your class'}`
+      description={
+        isNew
+          ? `Create a new conversation practice scenario for ${selectedClass?.course_code || "your class"}`
+          : `Editing "${practiceCase?.title || "Practice Case"}" for ${selectedClass?.course_code || "your class"}`
       }
     >
       {/* Back Navigation */}
       <div className="mb-6">
-        <Button 
-          onClick={() => navigate('/instructor/lessons')}
+        <Button
+          onClick={handleBackToLessons} // CHANGE: flush before leaving
           variant="outline"
           className="flex items-center space-x-2 bg-white border-gray-300 hover:bg-gray-50"
         >
@@ -525,13 +563,10 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       </div>
 
       {/* Status Message */}
-      <StatusMessage 
-        message={statusMessage}
-        onDismiss={() => setStatusMessage(null)}
-      />
+      <StatusMessage message={statusMessage} onDismiss={() => setStatusMessage(null)} />
 
       {/* Progress Overview */}
-      <ProgressHeader 
+      <ProgressHeader
         practiceCase={practiceCase}
         isAutoSaving={isAutoSaving}
         hasUnsavedChanges={hasUnsavedChanges}
@@ -540,41 +575,41 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
         {/* Main Content */}
         <div className="xl:col-span-3">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={handleTabNavigation} className="space-y-6">
             <TabsList className="grid grid-cols-4 w-full bg-white border">
-                <TabsTrigger 
-                    value="basics" 
-                    className="flex items-center space-x-2 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:border-b-2 data-[state=active]:border-emerald-500"
-                >
-                    <Settings className="h-4 w-4" />
-                    <span className="hidden sm:inline">Basic Info</span>
-                    <span className="sm:hidden">Info</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                    value="content" 
-                    className="flex items-center space-x-2 data-[state=active]:bg-rose-50 data-[state=active]:text-rose-700 data-[state=active]:border-b-2 data-[state=active]:border-rose-500"
-                >
-                    <MessageSquare className="h-4 w-4" />
-                    <span className="hidden sm:inline">Learning Objectives</span>
-                    <span className="sm:hidden">Content</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                    value="scenario" 
-                    className="flex items-center space-x-2 data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700 data-[state=active]:border-b-2 data-[state=active]:border-violet-500"
-                >
-                    <Target className="h-4 w-4" />
-                    <span className="hidden sm:inline">Scenario Setup</span>
-                    <span className="sm:hidden">Scenario</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                    value="feedback" 
-                    className="flex items-center space-x-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-b-2 data-[state=active]:border-blue-500"
-                >
-                    <MessageSquare className="h-4 w-4" />
-                    <span className="hidden sm:inline">AI Feedback</span>
-                    <span className="sm:hidden">Feedback</span>
-                </TabsTrigger>
-                </TabsList>
+              <TabsTrigger
+                value="basics"
+                className="flex items-center space-x-2 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 data-[state=active]:border-b-2 data-[state=active]:border-emerald-500"
+              >
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">Basic Info</span>
+                <span className="sm:hidden">Info</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="content"
+                className="flex items-center space-x-2 data-[state=active]:bg-rose-50 data-[state=active]:text-rose-700 data-[state=active]:border-b-2 data-[state=active]:border-rose-500"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Learning Objectives</span>
+                <span className="sm:hidden">Content</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="scenario"
+                className="flex items-center space-x-2 data-[state=active]:bg-violet-50 data-[state=active]:text-violet-700 data-[state=active]:border-b-2 data-[state=active]:border-violet-500"
+              >
+                <Target className="h-4 w-4" />
+                <span className="hidden sm:inline">Scenario Setup</span>
+                <span className="sm:hidden">Scenario</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="feedback"
+                className="flex items-center space-x-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-b-2 data-[state=active]:border-blue-500"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">AI Feedback</span>
+                <span className="sm:hidden">Feedback</span>
+              </TabsTrigger>
+            </TabsList>
 
             {/* Basic Information Tab */}
             <TabsContent value="basics">
@@ -613,7 +648,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
             <TabsContent value="feedback">
               <FeedbackTab
                 practiceCase={practiceCase}
-                feedbackPrompt={practiceCase?.feedback_prompt || feedbackPrompt}
+                // CHANGE: only pass the saved prompt from practiceCase; no local fallback
                 onFeedbackChange={handleFeedbackChange}
                 onPrevious={() => handleTabNavigation("scenario")}
                 onSaveDraft={handleSaveDraft}
@@ -631,7 +666,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
           <SaveActionsCard
             onSaveDraft={handleSaveDraft}
             onPublish={handlePublish}
-            onCancel={handleCancel}
+            onCancel={handleCancel} // CHANGE: cancel flushes pending autosave
             onDelete={!isNew ? handleDelete : undefined}
             isSaving={isSaving}
             canPublish={canPublish()}
@@ -643,16 +678,13 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
           />
 
           {/* Quick Info */}
-          <QuickOverviewCard
-            practiceCase={practiceCase}
-            selectedClass={selectedClass}
-          />
+          <QuickOverviewCard practiceCase={practiceCase} selectedClass={selectedClass} />
 
           {/* Tips */}
           <TipsCard />
         </div>
       </div>
-      
+
       {/* Bottom Actions for Mobile */}
       <div className="xl:hidden border-t pt-6 mt-8">
         <div className="flex flex-col space-y-3">
@@ -665,12 +697,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
           />
 
           {/* Save Draft Button - Always first and available */}
-          <Button 
-            onClick={handleSaveDraft}
-            disabled={isSaving}
-            variant="outline"
-            className="w-full"
-          >
+          <Button onClick={handleSaveDraft} disabled={isSaving} variant="outline" className="w-full">
             {isSaving ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
@@ -679,13 +706,13 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                {isNew ? 'Save as Draft' : 'Save Changes'}
+                {isNew ? "Save as Draft" : "Save Changes"}
               </>
             )}
           </Button>
 
           {/* Publish Button - Only when validation passes */}
-          <Button 
+          <Button
             onClick={handlePublish}
             disabled={isSaving || !canPublish()}
             className="w-full bg-blue-600 hover:bg-blue-700"
@@ -698,28 +725,18 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
             ) : (
               <>
                 <Eye className="h-4 w-4 mr-2" />
-                {isNew ? 'Save & Publish' : 'Publish Case'}
+                {isNew ? "Save & Publish" : "Publish Case"}
               </>
             )}
           </Button>
-          
+
           <div className="flex space-x-3">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/instructor/lessons')}
-              className="flex-1"
-              disabled={isSaving}
-            >
+            <Button variant="outline" onClick={handleCancel} className="flex-1" disabled={isSaving}>
               Cancel
             </Button>
-            
+
             {!isNew && (
-              <Button 
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={isSaving}
-                className="flex-1"
-              >
+              <Button variant="destructive" onClick={handleDelete} disabled={isSaving} className="flex-1">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
               </Button>
