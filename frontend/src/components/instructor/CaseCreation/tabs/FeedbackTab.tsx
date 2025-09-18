@@ -8,12 +8,12 @@ import FeedbackConfiguration from '@/components/instructor/FeedbackConfiguration
 interface PracticeCase {
   id?: number;
   feedback_prompt?: string;
-  cultural_context?: string;  // Add this line
+  cultural_context?: string;
 }
 
 interface FeedbackTabProps {
   practiceCase: PracticeCase | null;
-  feedbackPrompt: string;
+
   onFeedbackChange: (prompt: string) => void;
   onPrevious: () => void;
   onSaveDraft: () => void;
@@ -24,7 +24,6 @@ interface FeedbackTabProps {
 
 const FeedbackTab: React.FC<FeedbackTabProps> = ({
   practiceCase,
-  feedbackPrompt,
   onFeedbackChange,
   onPrevious,
   onSaveDraft,
@@ -36,8 +35,9 @@ const FeedbackTab: React.FC<FeedbackTabProps> = ({
     <>
       <FeedbackConfiguration
         key={practiceCase?.id}
-        initialFeedbackPrompt={practiceCase?.feedback_prompt || feedbackPrompt}
-        culturalContext={practiceCase?.cultural_context}  // Add this line
+        // CHANGE: only seed from saved value, never from a parent fallback
+        initialFeedbackPrompt={practiceCase?.feedback_prompt ?? ""}
+        culturalContext={practiceCase?.cultural_context}
         onFeedbackChange={onFeedbackChange}
       />
 
