@@ -24,11 +24,15 @@ def create_app():
     jwt.init_app(app)
     commands.init_app(app) 
     
-    CORS(app, resources={r"/api/*": {"origins": [
-        "https://chitterchatter.app",
-        "https://www.chitterchatter.app",
-        "http://localhost:3000"
-    ]}}, supports_credentials=True)
+    CORS(
+        app,
+        origins=[
+            "https://chitterchatter.app",
+            "https://www.chitterchatter.app",
+            "http://localhost:3000"
+        ],
+        supports_credentials=True
+    )
     
     migrate.init_app(app, db)
 
