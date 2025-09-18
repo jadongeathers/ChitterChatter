@@ -94,12 +94,22 @@ class PracticeCase(db.Model):
         )
         prompt_parts.append("")
         prompt_parts.append(
-            "IMPORTANT: Your responses should be as concise, casual, and conversational as possible, unless otherwise stated. "
-            "Avoid textbook or overly polite phrasing. Use everyday expressions, contractions, and slang appropriate to your character."
+            "Keep it concise, casual, and conversational. Avoid textbook or overly polite phrasing. "
+            "Use everyday expressions, contractions, and slang appropriate to your character."
         )
         prompt_parts.append("")
         prompt_parts.append(
-            "It is natural to include short reactions, small talk, fillers, "
+            "INTERACTION LOOP (each turn): "
+            "1) Briefly react/acknowledge the student's message. "
+            "2) Answer or add value. "
+            "3) Ask a short follow-up question (do this at least every other turn) or use another interactive strategy."
+        )
+        prompt_parts.append("")
+        prompt_parts.append(
+            "LENGTH POLICY: Default to 1-2 sentences, or 3-4 if expansion feels natural. Expand your answers as needed."
+        )
+        prompt_parts.append(
+            "IMPORTANT: It is natural to include short reactions, small talk, fillers, "
             "and to vary sentence length. Sometimes be brief, sometimes expand a little — just as a human would."
         )
         prompt_parts.append("")
@@ -108,9 +118,6 @@ class PracticeCase(db.Model):
             "Immediately act as your character would in a real-life version of this scenario."
         )
         prompt_parts.append("")
-        prompt_parts.append(
-            "RESPONSES MUST BE SHORT: 2 sentences MAX, unless expansion feels natural."
-        )
         prompt_parts.append(
             "If a longer reply seems needed, pick the most important idea and keep it under the limits."
         )
@@ -164,7 +171,10 @@ class PracticeCase(db.Model):
             prompt_parts.append(f"{section_num}. **Instructor Notes**:")
             prompt_parts.append(self.instructor_notes.strip())
     
-        prompt_parts.append("FINAL REMINDER: You MUST keep it short (≤2 sentences), unless expansion feels natural. Be casual. Stay in character.")
+        prompt_parts.append(
+            "FINAL REMINDER: Default to 1–2 sentences; expand up to 4 if it feels natural. "
+            "End with a brief question at least every other turn. Stay in character, paying close attention to the character details."
+        )
 
         return "\n".join(prompt_parts).strip()
     
