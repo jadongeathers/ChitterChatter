@@ -198,8 +198,9 @@ export const setupWebRTCConnection = async (
     await pc.setLocalDescription(offer);
 
     const localDescription = await waitForIceGatheringComplete(pc);
+    const { sdp } = localDescription;
 
-    if (!localDescription.sdp) {
+    if (!sdp) {
       throw new Error("Failed to create SDP offer");
     }
 
@@ -209,7 +210,9 @@ export const setupWebRTCConnection = async (
     const model = "gpt-realtime";
 
     console.log(`Connecting to ${baseUrl}?model=${model}`);
-    console.log("SDP offer ready to send:", offer.sdp.substring(0, 100) + "...");
+    if (offer.sdp) {
+      console.log("SDP offer ready to send:", offer.sdp.substring(0, 100) + "...");
+    }
 
     // tiny retry helper
     const postSdp = async (): Promise<Response> => {
@@ -220,7 +223,7 @@ export const setupWebRTCConnection = async (
           "Content-Type": "application/sdp",
           "OpenAI-Beta": "realtime=v1", // <-- add this back
         },
-        body: localDescription.sdp,
+        body: sdp,
       });
     };
 
