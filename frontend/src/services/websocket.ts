@@ -23,6 +23,64 @@ interface OpenAIMessage {
   };
 }
 
+const waitForIceGatheringComplete = (
+  pc: RTCPeerConnection,
+  timeoutMs = 4000
+): Promise<RTCSessionDescriptionInit> => {
+  if (pc.iceGatheringState === "complete" && pc.localDescription) {
+    return Promise.resolve(pc.localDescription);
+  }
+
+  return new Promise((resolve, reject) => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+
+    const cleanup = () => {
+      pc.removeEventListener("icecandidate", onCandidate);
+      pc.removeEventListener("icegatheringstatechange", onStateChange);
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+
+    const finish = () => {
+      const localDescription = pc.localDescription;
+      if (localDescription) {
+        cleanup();
+        resolve(localDescription);
+      } else {
+        cleanup();
+        reject(new Error("ICE gathering completed without a local description."));
+      }
+    };
+
+    const onCandidate = (event: RTCPeerConnectionIceEvent) => {
+      if (!event.candidate) {
+        finish();
+      }
+    };
+
+    const onStateChange = () => {
+      if (pc.iceGatheringState === "complete") {
+        finish();
+      }
+    };
+
+    pc.addEventListener("icecandidate", onCandidate);
+    pc.addEventListener("icegatheringstatechange", onStateChange);
+
+    if (timeoutMs > 0) {
+      timeout = setTimeout(() => {
+        cleanup();
+        if (pc.localDescription) {
+          resolve(pc.localDescription);
+        } else {
+          reject(new Error("Timed out waiting for ICE gathering to complete."));
+        }
+      }, timeoutMs);
+    }
+  });
+};
+
 export const setupWebRTCConnection = async (
   clientSecret: string,
   onMessage: MessageCallback,
@@ -139,7 +197,9 @@ export const setupWebRTCConnection = async (
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    if (!offer.sdp) {
+    const localDescription = await waitForIceGatheringComplete(pc);
+
+    if (!localDescription.sdp) {
       throw new Error("Failed to create SDP offer");
     }
 
@@ -160,7 +220,7 @@ export const setupWebRTCConnection = async (
           "Content-Type": "application/sdp",
           "OpenAI-Beta": "realtime=v1", // <-- add this back
         },
-        body: offer.sdp,
+        body: localDescription.sdp,
       });
     };
 
