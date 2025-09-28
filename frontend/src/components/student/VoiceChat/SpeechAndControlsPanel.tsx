@@ -207,14 +207,14 @@ const SpeechAndControlsPanel: React.FC<SpeechAndControlsPanelProps> = ({
             </div>
 
             {/* Control Buttons */}
-            <div className="flex flex-col lg:flex-row gap-3 justify-center">
+            <div className="flex flex-col gap-3 justify-center lg:flex-row lg:flex-wrap">
               {/* Scenario Info Button */}
               {(conversationDescription || (notesForStudents && notesForStudents.trim())) && (
                 <Button
                   onClick={() => setShowInfoDialog(true)}
                   variant="outline"
                   size="lg"
-                  className="flex items-center justify-center gap-2 lg:w-auto order-3 lg:order-1"
+                  className="flex items-center justify-center gap-2 w-full order-3 lg:order-1 lg:flex-1 lg:max-w-xs lg:min-w-[180px]"
                 >
                   <Info className="w-4 h-4" />
                   Scenario Info
@@ -225,7 +225,7 @@ const SpeechAndControlsPanel: React.FC<SpeechAndControlsPanelProps> = ({
                 onClick={isPaused ? onResume : onPause}
                 variant={isPaused ? "default" : "outline"}
                 size="lg"
-                className="flex items-center gap-2 flex-1 order-1 lg:order-2"
+                className="flex items-center gap-2 order-1 flex-1 w-full lg:order-2 lg:max-w-xs lg:min-w-[180px]"
               >
                 {isPaused ? (
                   <>
@@ -244,7 +244,7 @@ const SpeechAndControlsPanel: React.FC<SpeechAndControlsPanelProps> = ({
                 onClick={stopSession}
                 variant="destructive"
                 size="lg"
-                className={`flex items-center gap-2 flex-1 order-2 lg:order-3 ${
+                className={`flex items-center gap-2 flex-1 order-2 w-full lg:order-3 lg:max-w-xs lg:min-w-[180px] ${
                   !canStop 
                     ? 'opacity-50 cursor-pointer' 
                     : ''
