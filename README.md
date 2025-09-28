@@ -73,19 +73,33 @@ frontend/
    ```
 
 4. Configure environment variables:
-   Create a `.env` file in the backend directory with:
+   - Create a `.env` file in the backend directory (keep a `.env.example` with placeholders in version control and never commit real secrets).
+   - Populate the variables using the reference table below. A sample configuration:
    ```
    # Flask settings
-   SECRET_KEY=your_secret_key
+   SECRET_KEY=replace_me
    FLASK_APP=app.py
    FLASK_ENV=development
-   
+
    # Database configuration
-   DATABASE_URL=your_database_url
-   ENCRYPTION_KEY=your_encryption_key
-   
+   DATABASE_URL=postgresql://postgres:postgres@localhost/vpp
+   ENCRYPTION_KEY=replace_with_44_char_key
+
    # OpenAI API key
-   OPENAI_API_KEY=your_openai_api_key
+   OPENAI_API_KEY=sk-...
+
+   # Frontend origin used in CORS checks
+   FRONTEND_URL=http://localhost:3000
+
+   # Master user bootstrap
+   MASTER_USER_EMAIL=admin@example.com
+   MASTER_USER_PASSWORD=choose_a_strong_password
+
+   # Image storage (required for uploads)
+   AWS_ACCESS_KEY_ID=your_access_key
+   AWS_SECRET_ACCESS_KEY=your_secret_key
+   AWS_REGION=us-east-2
+   AWS_S3_BUCKET_NAME=chitterchatter-dev
    ```
 
 5. Initialize the database
@@ -94,7 +108,13 @@ frontend/
    flask db upgrade
    ```
 
-6. Run the backend server
+6. (Optional) Seed the master user
+   ```bash
+   flask seed-master
+   ```
+   The CLI command in `backend/app/commands.py` reads `MASTER_USER_EMAIL` and `MASTER_USER_PASSWORD` from your environment. Re-run it any time you change the credentials.
+
+7. Run the backend server
    ```bash
    # Option 1: Using Flask command
    flask run
@@ -130,7 +150,27 @@ frontend/
    ```bash
    npm run dev
    ```
-   
+
+### Backend Environment Reference
+
+| Variable | Description | Used in |
+| --- | --- | --- |
+| `SECRET_KEY` | Flask session and CSRF signing key. | `backend/app/config.py` |
+| `FLASK_APP` | Entry point for CLI commands. | Flask CLI |
+| `FLASK_ENV` | Enables debug mode when `development`. | Flask runtime |
+| `DATABASE_URL` | SQLAlchemy connection string. | `backend/app/config.py` |
+| `ENCRYPTION_KEY` | 44-character Fernet key for sensitive fields. | `backend/app/models/*` |
+| `OPENAI_API_KEY` | Authenticates requests to OpenAI APIs. | `backend/app/services/voice_service.py` and others |
+| `FRONTEND_URL` | Allowed origin for CORS. | Backend CORS configuration |
+| `MASTER_USER_EMAIL` | Email used when seeding the master account. | `backend/app/commands.py` |
+| `MASTER_USER_PASSWORD` | Plaintext password used during seeding (hashed in DB). | `backend/app/commands.py` |
+| `AWS_ACCESS_KEY_ID` | IAM key with S3 permissions. | `backend/app/services/image_service.py` |
+| `AWS_SECRET_ACCESS_KEY` | Secret counterpart to the access key. | `backend/app/services/image_service.py` |
+| `AWS_REGION` | AWS region for S3 operations. | `backend/app/services/image_service.py` |
+| `AWS_S3_BUCKET_NAME` | Bucket holding uploaded case assets. | `backend/app/services/image_service.py` |
+
+> ⚠️ Rotate any committed secrets immediately and never push real credentials. Keep only placeholder values in `.env.example`.
+
 ### Git Workflow
 
 We use a feature branch workflow:
