@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ClassAwareLayout from "@/components/instructor/ClassAwareLayout";
 import { useClass } from "@/contexts/ClassContext";
+import { toast } from "sonner";
 
 interface PracticeCase {
   id: number;
@@ -135,7 +136,7 @@ const Lessons: React.FC = () => {
 
   // Navigate to global library
   const handleBrowseLibrary = () => {
-    navigate("/instructor/library");
+    toast.info("The Global Case Library is still in progress. Stay tuned!");
   };
 
   // Helper functions for display text

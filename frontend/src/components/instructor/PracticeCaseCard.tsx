@@ -104,6 +104,8 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
     return canPublish() && isPublished && !practiceCase.submitted_to_library;
   };
 
+  const isTestReady = canPublish() || (isPublished && !isDraft);
+
   const getStatus = () => {
     if (practiceCase.library_approved) return { label: "In Library", color: "purple", icon: Globe };
     if (isPublished) return { label: "Live", color: "green", icon: Eye };
@@ -420,26 +422,20 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
                   Edit
                 </Button>
                 
-                {isPublished && !isDraft ? (
-                  <Button
-                    size="sm"
-                    className="flex-1 bg-green-500 hover:bg-green-600 text-white"
-                    onClick={() => navigate(`/practice/${practiceCase.id}`)}
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    Test
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    disabled
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    Test
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  variant={isTestReady ? "default" : "outline"}
+                  className={`flex-1 ${isTestReady ? "bg-green-500 hover:bg-green-600 text-white" : ""}`}
+                  disabled={!isTestReady}
+                  onClick={() => {
+                    if (isTestReady) {
+                      navigate(`/practice/${practiceCase.id}`);
+                    }
+                  }}
+                >
+                  <Eye className="h-3 w-3 mr-1" />
+                  Test
+                </Button>
                 
                 {canSubmitToLibrary() ? (
                   <Button

@@ -34,6 +34,7 @@ import GlobalLibrary from "@/pages/instructor/GlobalCaseLibrary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ClassProvider } from "@/contexts/ClassContext";
 import { StudentClassProvider } from "@/contexts/StudentClassContext";
+import { Toaster } from "@/components/ui/sonner";
 
 // Define a type for user roles for clarity
 type UserRole = "student" | "instructor" | "master";
@@ -143,6 +144,7 @@ export default function App() {
       <ClassProvider>
         <StudentClassProvider>
           <AppRoutes />
+          <Toaster position="top-center" richColors closeButton />
         </StudentClassProvider>
       </ClassProvider>
     </AuthProvider>
