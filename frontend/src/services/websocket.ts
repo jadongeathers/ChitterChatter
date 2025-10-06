@@ -1,5 +1,4 @@
 // websocket.ts
-import { fetchWithAuth } from "@/utils/api";
 
 interface MessageCallback {
   (message: { type: string; text: string; is_final?: boolean; is_speaking?: boolean }): void;
@@ -88,6 +87,8 @@ export const setupWebRTCConnection = async (
 ): Promise<{ pc: RTCPeerConnection; dataChannel: RTCDataChannel; localStream: MediaStream }> => {
   try {
     console.log("Setting up WebRTC connection...");
+    console.log("Browser:", navigator.userAgent);
+
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
@@ -96,13 +97,65 @@ export const setupWebRTCConnection = async (
     let isPaused = false;
     let pausedAudioQueue: any[] = [];
 
-    // Incoming audio
-    pc.ontrack = (event) => {
-      console.log("Received audio track");
-      if (event.streams && event.streams[0]) {
-        onRemoteStream(event.streams[0]);
+    // Track remote stream reception
+    let remoteStreamReceived = false;
+
+    // Monitor ICE connection state
+    pc.oniceconnectionstatechange = () => {
+      const state = pc.iceConnectionState;
+      if (state === 'failed') {
+        console.error("❌ ICE connection failed - likely network/firewall issue");
+      } else if (state === 'connected') {
+        console.log("🔌 ICE connection established");
       }
     };
+
+    // Monitor peer connection state
+    pc.onconnectionstatechange = () => {
+      const state = pc.connectionState;
+      if (state === 'failed') {
+        console.error("❌ Peer connection failed");
+      } else if (state === 'connected') {
+        console.log("🔗 Peer connection established");
+      }
+    };
+
+    // Monitor ICE gathering state
+    pc.onicegatheringstatechange = () => {
+      if (pc.iceGatheringState === 'complete') {
+        console.log("🧊 ICE gathering complete");
+      }
+    };
+
+    // Log ICE candidates as they're discovered
+    pc.onicecandidate = () => {};
+
+    // Incoming audio with enhanced logging
+    pc.ontrack = (event) => {
+      if (event.streams && event.streams[0]) {
+        const stream = event.streams[0];
+        const audioTracks = stream.getAudioTracks();
+        console.log(`✅ Remote stream received with ${audioTracks.length} audio track(s)`);
+        remoteStreamReceived = true;
+        onRemoteStream(stream);
+      } else {
+        console.error("❌ ontrack fired but no streams received");
+      }
+    };
+
+    // Timeout for remote stream
+    setTimeout(() => {
+      if (!remoteStreamReceived) {
+        console.error("❌ DIAGNOSTIC: No remote audio stream received after 10 seconds");
+        console.error("This could indicate:");
+        console.error("1. Network/firewall blocking WebRTC traffic");
+        console.error("2. Browser extensions blocking connections");
+        console.error("3. VPN interfering with peer connections");
+        console.error("4. OpenAI API issues");
+        console.error("Current ICE state:", pc.iceConnectionState);
+        console.error("Current connection state:", pc.connectionState);
+      }
+    }, 10000);
 
     // Microphone
     let localStream: MediaStream;
@@ -122,13 +175,10 @@ export const setupWebRTCConnection = async (
     dataChannel.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data) as OpenAIMessage;
-        console.log("Message type:", message.type);
-        console.log(message);
 
         if (isPaused) {
           if (message.type.includes("audio") || message.type.includes("speaking")) {
             pausedAudioQueue.push(message);
-            console.log("Queued message during pause:", message.type);
             return;
           }
         }

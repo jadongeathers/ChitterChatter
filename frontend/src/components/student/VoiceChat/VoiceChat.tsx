@@ -45,6 +45,8 @@ const VoiceChat: React.FC = () => {
   const [isEndingConversation, setIsEndingConversation] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showNoAudioHint, setShowNoAudioHint] = useState(false);
+  const [showIdlePrompt, setShowIdlePrompt] = useState(false);
   const wasAiSpeakingOnPauseRef = useRef(false);
 
   // New pause-related state
@@ -55,11 +57,60 @@ const VoiceChat: React.FC = () => {
   const conversationIdRef = useRef<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const noAudioHintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const idlePromptTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Centralized function to clean up all media resources
+  const clearNoAudioHintTimer = useCallback(() => {
+    if (noAudioHintTimeoutRef.current) {
+      clearTimeout(noAudioHintTimeoutRef.current);
+      noAudioHintTimeoutRef.current = null;
+    }
+    setShowNoAudioHint(false);
+  }, []);
+
+  const startNoAudioHintTimer = useCallback(() => {
+    clearNoAudioHintTimer();
+    noAudioHintTimeoutRef.current = setTimeout(() => {
+      console.warn("No AI audio detected after 10 seconds");
+      setShowNoAudioHint(true);
+    }, 10000);
+  }, [clearNoAudioHintTimer]);
+
+  const dismissNoAudioHint = useCallback(() => {
+    console.log("User dismissed no-audio helper message");
+    clearNoAudioHintTimer();
+  }, [clearNoAudioHintTimer]);
+
+  const clearIdlePromptTimer = useCallback(() => {
+    if (idlePromptTimeoutRef.current) {
+      clearTimeout(idlePromptTimeoutRef.current);
+      idlePromptTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleIdlePrompt = useCallback((delay = 10000) => {
+    clearIdlePromptTimer();
+    idlePromptTimeoutRef.current = setTimeout(() => {
+      setShowIdlePrompt(true);
+    }, delay);
+  }, [clearIdlePromptTimer]);
+
+  const dismissIdlePrompt = useCallback((shouldReschedule = false) => {
+    clearIdlePromptTimer();
+    setShowIdlePrompt(false);
+    if (shouldReschedule) {
+      scheduleIdlePrompt(20000);
+    }
+  }, [clearIdlePromptTimer, scheduleIdlePrompt]);
+
   const cleanupMediaResources = useCallback(() => {
     console.log("Cleaning up media resources...");
-    
+
+    clearNoAudioHintTimer();
+    clearIdlePromptTimer();
+    setShowIdlePrompt(false);
+
     // Close peer connection and stop all tracks
     if (pc) {
       pc.getSenders().forEach((sender) => {
@@ -98,7 +149,7 @@ const VoiceChat: React.FC = () => {
 
     // Clear data channel reference
     dataChannelRef.current = null;
-  }, [pc, localStream, remoteStream]);
+  }, [pc, localStream, remoteStream, clearNoAudioHintTimer, clearIdlePromptTimer]);
 
   // Function to pause/resume microphone
   const toggleMicrophone = (enable: boolean) => {
@@ -281,28 +332,7 @@ const VoiceChat: React.FC = () => {
     }
   };  
 
-  // Handle incoming messages from OpenAI.
-  const handleMessage = useCallback(
-    (message: { type: string; text: string; is_final?: boolean; is_speaking?: boolean }) => {
-      if (!conversationIdRef.current) return;
-
-      // Track the AI's speaking state
-      if (typeof message.is_speaking === "boolean") {
-        setIsAiSpeaking(message.is_speaking);
-      }
-
-      // Handle saving user and assistant messages
-      if (message.type === "speech") {
-        saveMessage("user", message.text);
-      } else if (message.type === "assistant" && message.text) {
-        setCurrentMessage(message.text);
-        saveMessage("assistant", message.text);
-      }
-    },
-    [] // Keep dependencies minimal
-  );
-
-  const saveMessage = async (role: string, text: string) => {
+  const saveMessage = useCallback(async (role: string, text: string) => {
     if (!conversationIdRef.current) return;
     try {
       const response = await fetchWithAuth(
@@ -317,7 +347,29 @@ const VoiceChat: React.FC = () => {
     } catch (err) {
       console.error("Error saving message:", err);
     }
-  };
+  }, []);
+
+  // Handle incoming messages from OpenAI.
+  const handleMessage = useCallback(
+    (message: { type: string; text: string; is_final?: boolean; is_speaking?: boolean }) => {
+      if (!conversationIdRef.current) return;
+
+      // Track the AI's speaking state
+      if (typeof message.is_speaking === "boolean") {
+        setIsAiSpeaking(message.is_speaking);
+      }
+
+      // Handle saving user and assistant messages
+      if (message.type === "speech") {
+        dismissIdlePrompt(true);
+        saveMessage("user", message.text);
+      } else if (message.type === "assistant" && message.text) {
+        setCurrentMessage(message.text);
+        saveMessage("assistant", message.text);
+      }
+    },
+    [dismissIdlePrompt, saveMessage]
+  );
 
   const startSession = async () => {
     setIsModalOpen(false);
@@ -325,20 +377,32 @@ const VoiceChat: React.FC = () => {
     setTimeElapsed(0);
     setStatus("Connecting...");
     setTotalPausedTime(0); // Reset pause time
-  
+    clearNoAudioHintTimer();
+    setShowNoAudioHint(false);
+    clearIdlePromptTimer();
+    setShowIdlePrompt(false);
+
     try {
       const userId = await fetchUserId();
       const practiceCaseId = parseInt(id as string, 10);
-  
+
+      console.log("Starting voice conversation session", {
+        practiceCaseId,
+        userId,
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
+        platform: typeof navigator !== "undefined" ? navigator.platform : "unknown",
+        timestamp: new Date().toISOString(),
+      });
+
       const response = await fetchWithAuth("/api/conversations/conversation/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, practice_case_id: practiceCaseId }),
       });
-  
+
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to start conversation");
-  
+
       // compute numeric speed from the practiceCase setting
       const speed =
         typeof (practiceCase as any)?.speaking_speed_rate === "number"
@@ -347,30 +411,68 @@ const VoiceChat: React.FC = () => {
 
       conversationIdRef.current = data.conversation_id;
       const { client_secret } = await apiClient.createSession(userId, practiceCaseId, { speed });
+
+      startNoAudioHintTimer();
+
+      const handleRemoteStreamReady = (stream: MediaStream) => {
+        console.log("Remote AI audio stream received", {
+          tracks: stream.getAudioTracks().map((track) => ({
+            id: track.id,
+            label: track.label,
+            muted: track.muted,
+            enabled: track.enabled,
+            readyState: track.readyState,
+          })),
+          timestamp: new Date().toISOString(),
+        });
+        clearNoAudioHintTimer();
+        scheduleIdlePrompt(10000);
+        setRemoteStream(stream);
+        setStatus("Connected");
+      };
+
       const { pc: peerConnection, dataChannel, localStream: stream } = await setupWebRTCConnection(
         client_secret,
         handleMessage,
-        (stream) => setRemoteStream(stream)
+        handleRemoteStreamReady
       );
-  
+
       setLocalStream(stream);
       setPc(peerConnection);
       dataChannelRef.current = dataChannel; // Store data channel reference
-  
-      setStatus("Connected");
+
+      peerConnection.addEventListener("connectionstatechange", () => {
+        console.log("Peer connection state changed", peerConnection.connectionState);
+        if (peerConnection.connectionState === "connected") {
+          setStatus("Connected");
+        } else if (peerConnection.connectionState === "connecting") {
+          setStatus("Connecting...");
+        } else if (peerConnection.connectionState === "disconnected") {
+          startNoAudioHintTimer();
+          setStatus("Reconnecting...");
+        } else if (peerConnection.connectionState === "failed") {
+          clearNoAudioHintTimer();
+          setStatus("Error");
+          setError("The realtime connection dropped. Please refresh the page or try a different browser.");
+        }
+      });
+
+      setStatus("Waiting for AI...");
     } catch (err) {
       console.error("Session error:", err);
-  
+
+      clearNoAudioHintTimer();
+
       // Clean up any partially created resources on error
       cleanupMediaResources();
-  
+
       // Specific microphone access error handling
       if (err instanceof Error && err.message.includes("Microphone access was denied")) {
         setError("Microphone access not enabled! Please enable microphone access and refresh your browser.");
       } else {
         setError(err instanceof Error ? err.message : "Failed to start session");
       }
-  
+
       setStatus("Error");
       setIsSessionStarted(false);
     }
@@ -566,12 +668,12 @@ const VoiceChat: React.FC = () => {
             initial={{ opacity: 0 }} 
             animate={{ opacity: isExiting ? 0 : 1 }} 
           >
-            <ConversationArea
-              currentMessage={currentMessage}
-              showHint={showHint}
-              onToggleShowHint={() => setShowHint(!showHint)}
-              stopSession={handleStopClick}
-              status={status}
+          <ConversationArea
+            currentMessage={currentMessage}
+            showHint={showHint}
+            onToggleShowHint={() => setShowHint(!showHint)}
+            stopSession={handleStopClick}
+            status={status}
               error={error}
               practiceCase={practiceCase}
               remoteStream={remoteStream}
@@ -580,10 +682,7 @@ const VoiceChat: React.FC = () => {
               timeElapsed={timeElapsed}
               onTimerUp={stopSession}
               canStop={minReached}
-              onTick={(elapsed) => {
-                console.log("VoiceChat received elapsed:", elapsed);
-                setTimeElapsed(elapsed);
-              }}
+              onTick={setTimeElapsed}
               isEndingConversation={isEndingConversation}
               // New pause props
               isPaused={isPaused}
@@ -592,6 +691,10 @@ const VoiceChat: React.FC = () => {
               totalPausedTime={totalPausedTime}
               // NEW: pass scenario image down
               scenarioImageUrl={scenarioImageUrl}
+              connectionNotice={showNoAudioHint ? "Not hearing anything? Refresh the page or try switching to Chrome or Microsoft Edge." : null}
+              onDismissConnectionNotice={dismissNoAudioHint}
+              idlePrompt={showIdlePrompt ? "Try saying hello to get the conversation going." : null}
+              onDismissIdlePrompt={() => dismissIdlePrompt(true)}
             />
           </motion.div>
         )

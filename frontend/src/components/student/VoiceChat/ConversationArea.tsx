@@ -5,6 +5,7 @@ import { Pause, Wifi, WifiOff } from "lucide-react";
 import Timer from "./Timer";
 import AIImage from "./AIImage";
 import SpeechAndControlsPanel from "./SpeechAndControlsPanel";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PracticeCase {
   id: number;
@@ -38,6 +39,10 @@ interface ConversationAreaProps {
   scenarioImageUrl?: string | null;
   additionalInformation?: string;
   practiceCase?: PracticeCase | null;
+  connectionNotice?: string | null;
+  onDismissConnectionNotice?: () => void;
+  idlePrompt?: string | null;
+  onDismissIdlePrompt?: () => void;
 }
 
 const ConversationArea: React.FC<ConversationAreaProps> = ({
@@ -62,6 +67,10 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
   scenarioImageUrl,
   additionalInformation,
   practiceCase,
+  connectionNotice,
+  onDismissConnectionNotice,
+  idlePrompt,
+  onDismissIdlePrompt,
 }) => {
   const [displayTime, setDisplayTime] = useState(0);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
@@ -107,7 +116,45 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 flex items-center justify-center">
+      <div className="flex-1 p-4 flex flex-col gap-4">
+        {(connectionNotice || idlePrompt) && (
+          <div className="w-full max-w-3xl mx-auto">
+            {connectionNotice && (
+              <Alert className="mb-2">
+                <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <span>{connectionNotice}</span>
+                  {onDismissConnectionNotice && (
+                    <button
+                      type="button"
+                      onClick={onDismissConnectionNotice}
+                      className="self-start rounded-md border border-transparent px-3 py-1 text-sm font-medium text-blue-600 hover:underline"
+                    >
+                      Dismiss
+                    </button>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+            {idlePrompt && (
+              <Alert>
+                <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <span>{idlePrompt}</span>
+                  {onDismissIdlePrompt && (
+                    <button
+                      type="button"
+                      onClick={onDismissIdlePrompt}
+                      className="self-start rounded-md border border-transparent px-3 py-1 text-sm font-medium text-blue-600 hover:underline"
+                    >
+                      Dismiss
+                    </button>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+        )}
+
+        <div className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-6xl">
           {hasImage ? (
             // Two-column layout when image is available
@@ -159,6 +206,7 @@ const ConversationArea: React.FC<ConversationAreaProps> = ({
               />
             </div>
           )}
+        </div>
         </div>
       </div>
 
