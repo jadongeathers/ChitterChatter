@@ -210,6 +210,7 @@ const Analytics: React.FC = () => {
           timeSpent: student.timeSpent || 0,
           messageCount: student.messageCount || 0,
           attempts: student.attempts || attemptHistory.length,
+          lastAttempt: student.lastAttempt ?? null
         };
       });
 
