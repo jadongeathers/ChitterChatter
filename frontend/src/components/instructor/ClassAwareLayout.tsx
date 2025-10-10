@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useClass } from '@/contexts/ClassContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GraduationCap, Users, BookOpen, Settings } from 'lucide-react';
 import ClassSelector from './ClassSelector';
@@ -27,8 +26,7 @@ const ClassAwareLayout: React.FC<ClassAwareLayoutProps> = ({
     selectClass, 
     isLoading, 
     error,
-    hasInitialized,
-    classDisplayName 
+    hasInitialized
   } = useClass();
   
   const [showFullClassSelector, setShowFullClassSelector] = useState(showClassSelector);
@@ -89,7 +87,7 @@ const ClassAwareLayout: React.FC<ClassAwareLayoutProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-bold truncate">{title}</h1>
-            <p className="text-gray-600 mt-1 text-sm sm:text-base">{description}</p>
+            <p className="mt-1 text-sm sm:text-base text-muted-foreground leading-relaxed">{description}</p>
           </div>
           
           {/* Class Selection Controls - Single Dropdown */}

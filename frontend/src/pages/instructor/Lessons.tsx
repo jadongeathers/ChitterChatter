@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { fetchWithAuth } from "@/utils/api";
 import PracticeCaseCard from "@/components/instructor/PracticeCaseCard";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, BookOpen, Search, Filter, SortAsc, Globe, Sparkles } from "lucide-react";
+import { Plus, BookOpen, Search, Filter, SortAsc, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,7 @@ interface PracticeCase {
 }
 
 const Lessons: React.FC = () => {
-  const { selectedClass, apiParams, classDisplayName } = useClass();
+  const { selectedClass, apiParams } = useClass();
   const [practiceCases, setPracticeCases] = useState<PracticeCase[]>([]);
   const [filteredCases, setFilteredCases] = useState<PracticeCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -337,9 +337,9 @@ const Lessons: React.FC = () => {
           </div>
 
           {/* Results Summary */}
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 font-medium">{getCaseCountText()}</span>
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>{getCaseCountText()}</span>
               {selectedClass && (
                 <Badge variant="outline" className="text-xs">
                   {selectedClass.section_code} • {selectedClass.term?.name}
@@ -363,10 +363,10 @@ const Lessons: React.FC = () => {
             {filteredCases.map((practiceCase, index) => (
               <motion.div
                 key={practiceCase.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
+                transition={{ duration: 0.45, ease: "easeOut", delay: index * 0.04 }}
               >
                 <PracticeCaseCard 
                   practiceCase={practiceCase} 
@@ -379,10 +379,10 @@ const Lessons: React.FC = () => {
             {/* Add a Case Card - Only show if no filters applied */}
             {!searchTerm && filterBy === "all" && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, delay: filteredCases.length * 0.05 }}
+                transition={{ duration: 0.45, ease: "easeOut", delay: filteredCases.length * 0.04 }}
                 className="flex"
               >
                 <div
@@ -409,10 +409,10 @@ const Lessons: React.FC = () => {
             {/* Browse Library Card - Show when no filters applied */}
             {!searchTerm && filterBy === "all" && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, delay: (filteredCases.length + 1) * 0.05 }}
+                transition={{ duration: 0.45, ease: "easeOut", delay: (filteredCases.length + 1) * 0.04 }}
                 className="flex"
               >
                 <div
@@ -440,8 +440,9 @@ const Lessons: React.FC = () => {
       {/* Enhanced Empty State */}
       {!isLoading && filteredCases.length === 0 && (
         <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
           className="text-center py-16"
         >
           <div className="bg-gray-100 p-4 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">

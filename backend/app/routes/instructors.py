@@ -172,7 +172,7 @@ def get_practice_case_analytics():
                 Enrollment.section_id == section_id,
                 Enrollment.role == "student"
             ).all()
-            
+
             # Get the class for this section
             section = Section.query.get(section_id)
             class_ids = {section.class_id} if section else set()
@@ -219,6 +219,102 @@ def get_practice_case_analytics():
     except Exception as e:
         current_app.logger.error(f"Error fetching practice case analytics: {str(e)}")
         return jsonify({"error": "Failed to retrieve analytics"}), 500
+
+
+@instructors.route("/analytics/<int:case_id>/details", methods=["GET"])
+@jwt_required()
+def get_case_analytics_details(case_id):
+    """
+    Retrieve detailed analytics for a specific practice case.
+    Returns student-level data including completion status, time spent, and message count.
+    """
+    try:
+        current_user_id = get_jwt_identity()
+        instructor = User.query.get(current_user_id)
+
+        if not instructor or not is_user_instructor(instructor):
+            return jsonify({"error": "Unauthorized"}), 403
+
+        # Get optional class filter
+        class_id = request.args.get("class_id", type=int)
+        section_id = request.args.get("section_id", type=int)
+
+        # Verify the practice case exists and belongs to instructor's class
+        case = PracticeCase.query.get(case_id)
+        if not case:
+            return jsonify({"error": "Practice case not found"}), 404
+
+        # Get students based on filter
+        if section_id:
+            students = User.query.join(Enrollment).filter(
+                Enrollment.section_id == section_id,
+                Enrollment.role == "student"
+            ).all()
+        elif class_id:
+            students = User.query.join(Enrollment).join(Section).filter(
+                Section.class_id == class_id,
+                Enrollment.role == "student"
+            ).all()
+        else:
+            students = get_students_for_instructor(instructor)
+
+        # Build detailed student data
+        student_details = []
+        for student in students:
+            conversations = Conversation.query.filter(
+                Conversation.practice_case_id == case_id,
+                Conversation.user_id == student.id
+            ).order_by(Conversation.start_time.desc()).all()
+
+            attempt_history = []
+            total_time = 0
+            total_messages = 0
+            completed_attempts = 0
+            last_attempt_dt = None
+
+            for conv in conversations:
+                message_count = len(conv.messages)
+                total_messages += message_count
+                total_time += conv.duration or 0
+
+                if conv.completed:
+                    completed_attempts += 1
+
+                attempt_timestamp = conv.end_time or conv.start_time
+                if attempt_timestamp and (not last_attempt_dt or attempt_timestamp > last_attempt_dt):
+                    last_attempt_dt = attempt_timestamp
+
+                attempt_history.append({
+                    "id": conv.id,
+                    "startTime": conv.start_time.isoformat() if conv.start_time else None,
+                    "endTime": conv.end_time.isoformat() if conv.end_time else None,
+                    "duration": conv.duration or 0,
+                    "completed": bool(conv.completed),
+                    "messageCount": message_count
+                })
+
+            student_details.append({
+                "id": student.id,
+                "name": student.full_name,
+                "email": student.email,
+                "completed": completed_attempts > 0,
+                "timeSpent": total_time,
+                "messageCount": total_messages,
+                "attempts": len(conversations),
+                "completedAttempts": completed_attempts,
+                "lastAttempt": last_attempt_dt.isoformat() if last_attempt_dt else None,
+                "attemptHistory": attempt_history
+            })
+
+        return jsonify({
+            "caseId": case_id,
+            "caseTitle": case.title,
+            "students": student_details
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error fetching case analytics details: {str(e)}")
+        return jsonify({"error": "Failed to retrieve case details"}), 500
 
 
 @instructors.route("/practice-cases", methods=["GET"])

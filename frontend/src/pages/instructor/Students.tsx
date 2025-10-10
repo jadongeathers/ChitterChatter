@@ -36,7 +36,7 @@ interface Student {
 }
 
 const Students: React.FC = () => {
-  const { selectedClass, apiParams, classDisplayName } = useClass();
+  const { selectedClass, apiParams } = useClass();
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,14 +95,15 @@ const Students: React.FC = () => {
     // Apply sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case "name":
-          const [lastA, firstA] = a.name.split(" ").reverse();
-          const [lastB, firstB] = b.name.split(" ").reverse();
+        case "name": {
+          const [lastA = "", firstA = ""] = a.name.split(" ").reverse();
+          const [lastB = "", firstB = ""] = b.name.split(" ").reverse();
           return lastA.localeCompare(lastB) || firstA.localeCompare(firstB);
+        }
         case "sessions":
           return b.sessionsCompleted - a.sessionsCompleted;
-          case "recent":
-            return new Date(b.lastLoginTimestamp || 0).getTime() - new Date(a.lastLoginTimestamp || 0).getTime();
+        case "recent":
+          return new Date(b.lastLoginTimestamp || 0).getTime() - new Date(a.lastLoginTimestamp || 0).getTime();
         default:
           return 0;
       }
@@ -139,7 +140,7 @@ const Students: React.FC = () => {
     setDialogMessage("");
 
     try {
-      const requestBody: any = {
+      const requestBody: Record<string, string | number> = {
         email: newStudentEmail,
         first_name: newStudentFirstName,
         last_name: newStudentLastName,
@@ -300,8 +301,9 @@ const Students: React.FC = () => {
       {/* Success Message */}
       {successMessage && (
         <motion.div 
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
           className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-6"
         >
           {successMessage}
@@ -310,62 +312,76 @@ const Students: React.FC = () => {
 
       {/* Enhanced Stats Overview */}
       <div className="mb-8 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-blue-600 p-2 rounded-lg">
-                  <Users className="h-5 w-5 text-white" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+                  <Users className="h-6 w-6 text-blue-600" />
                 </div>
-                <div>
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-900">{students.length}</div>
-                <div className="text-xs sm:text-sm text-blue-700">Total Students</div>
+                <div className="ml-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Total Students
+                  </p>
+                  <p className="text-2xl font-semibold text-slate-900">{students.length}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedClass ? selectedClass.course_code : "Across all classes"}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-green-600 p-2 rounded-lg">
-                  <Activity className="h-5 w-5 text-white" />
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                  <Activity className="h-6 w-6 text-green-600" />
                 </div>
-                <div>
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-900">{getActiveStudents()}</div>
-                  <div className="text-xs sm:text-sm text-green-700">Active Students</div>
+                <div className="ml-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Active Students
+                  </p>
+                  <p className="text-2xl font-semibold text-slate-900">{getActiveStudents()}</p>
+                  <p className="text-xs text-muted-foreground">Had at least one session</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-orange-600 p-2 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-white" />
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-100">
+                  <TrendingUp className="h-6 w-6 text-orange-500" />
                 </div>
-                <div>
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-900">
-                    {getEngagementRate()}%
-                  </div>
-                  <div className="text-xs sm:text-sm text-orange-700">
+                <div className="ml-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Engagement Rate
-                  </div>
+                  </p>
+                  <p className="text-2xl font-semibold text-slate-900">
+                    {getEngagementRate()}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {getActiveStudents()} of {students.length} active
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-purple-600 p-2 rounded-lg">
-                  <Calendar className="h-5 w-5 text-white" />
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
+              <div className="flex items-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
+                  <Calendar className="h-6 w-6 text-purple-600" />
                 </div>
-                <div>
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-900">{getAverageSessionsPerStudent()}</div>
-                  <div className="text-xs sm:text-sm text-purple-700">Avg Sessions</div>
+                <div className="ml-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Avg Sessions
+                  </p>
+                  <p className="text-2xl font-semibold text-slate-900">{getAverageSessionsPerStudent()}</p>
+                  <p className="text-xs text-muted-foreground">Per student overall</p>
                 </div>
               </div>
             </CardContent>
@@ -508,9 +524,9 @@ const Students: React.FC = () => {
           </div>
 
           {/* Results Summary */}
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 font-medium">{getStudentCountText()}</span>
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>{getStudentCountText()}</span>
               {selectedClass && (
                 <Badge variant="outline" className="text-xs">
                   {selectedClass.section_code} • {selectedClass.term?.name}
@@ -522,7 +538,11 @@ const Students: React.FC = () => {
       </div>
 
       {/* Enhanced Student Table */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut", delay: 0.12 }}
+      >
         <Card className="shadow-lg border-0 bg-white">
           <CardContent className="p-0">
             <Table>
@@ -548,9 +568,9 @@ const Students: React.FC = () => {
                   filteredStudents.map((student, index) => (
                     <motion.tr
                       key={student.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.35, ease: "easeOut", delay: index * 0.04 }}
                       className="hover:bg-slate-50/50 transition-colors"
                     >
                       <TableCell className="p-4">
