@@ -9,7 +9,7 @@ class Section(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     class_id = db.Column(db.Integer, db.ForeignKey("classes.id"), nullable=False)
-    section_code = db.Column(db.String(10), nullable=False)
+    section_code = db.Column(db.String(20), nullable=False)
     
     term_id = db.Column(db.Integer, db.ForeignKey("terms.id"), nullable=False)
     
