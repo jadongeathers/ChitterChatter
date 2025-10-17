@@ -693,7 +693,7 @@ const VoiceChat: React.FC = () => {
               scenarioImageUrl={scenarioImageUrl}
               connectionNotice={showNoAudioHint ? "Not hearing anything? Refresh the page or try switching to Chrome or Microsoft Edge." : null}
               onDismissConnectionNotice={dismissNoAudioHint}
-              idlePrompt={showIdlePrompt ? "Try saying hello to get the conversation going." : null}
+              idlePrompt={null}
               onDismissIdlePrompt={() => dismissIdlePrompt(true)}
             />
           </motion.div>

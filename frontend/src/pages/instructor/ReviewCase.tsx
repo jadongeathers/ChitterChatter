@@ -90,7 +90,7 @@ const voiceOptions = [
   { id: "verse", name: "Verse", description: "Expressive, dynamic voice" },
 ];
 
-const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
+const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew: initialIsNew = false }) => {
   const { caseId } = useParams<{ caseId: string }>();
   const { selectedClass } = useClass();
   const navigate = useNavigate();
@@ -104,6 +104,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [activeTab, setActiveTab] = useState("basics");
+  const [isNewCase, setIsNewCase] = useState(initialIsNew);
 
   // CHANGE: refs to avoid stale state in autosave/flush-on-leave
   const practiceCaseRef = useRef<PracticeCase | null>(null);
@@ -155,7 +156,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
 
   // Initialize data
   useEffect(() => {
-    if (isNew) {
+    if (isNewCase) {
       const classId = getClassId();
       if (!classId) {
         setStatusMessage({
@@ -193,6 +194,16 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       return;
     }
 
+    if (!caseId) {
+      setStatusMessage({
+        type: "error",
+        message: "Missing practice case id. Please return to the lessons list and try again.",
+      });
+      setIsLoading(false);
+      navigate("/instructor/lessons");
+      return;
+    }
+
     // Fetch existing case
     const fetchPracticeCase = async () => {
       try {
@@ -214,13 +225,13 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     };
 
     fetchPracticeCase();
-  }, [caseId, isNew, selectedClass, navigate]);
+  }, [caseId, isNewCase, selectedClass, navigate]);
 
   // Auto-save functionality (non-blocking; do NOT overwrite local typing state)
   const autoSaveDraft = useCallback(
     async (override?: PracticeCase) => {
       const data = override ?? practiceCaseRef.current; // CHANGE: allow a snapshot override for flush-on-leave
-      if (!data || !hasUnsavedChangesRef.current || isNew || !data.id) return;
+      if (!data || !hasUnsavedChangesRef.current || isNewCase || !data.id) return;
 
       setIsAutoSaving(true);
       try {
@@ -247,19 +258,19 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         setIsAutoSaving(false);
       }
     },
-    [isNew]
+    [isNewCase]
   );
 
   // Auto-save timer
   useEffect(() => {
-    if (hasUnsavedChanges && !isNew && practiceCase?.id) {
+    if (hasUnsavedChanges && !isNewCase && practiceCase?.id) {
       const autoSaveTimer = setTimeout(() => {
         autoSaveDraft();
       }, 3000);
 
       return () => clearTimeout(autoSaveTimer);
     }
-  }, [hasUnsavedChanges, autoSaveDraft, isNew, practiceCase?.id]);
+  }, [hasUnsavedChanges, autoSaveDraft, isNewCase, practiceCase?.id]);
 
   // Clear status message after delay
   useEffect(() => {
@@ -342,8 +353,13 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     setIsSaving(true);
 
     try {
-      const endpoint = isNew ? "/api/practice_cases/add_case" : `/api/practice_cases/update_case/${caseId}`;
-      const method = isNew ? "POST" : "PUT";
+      const resolvedCaseId = practiceCase.id ?? caseId;
+      if (!isNewCase && !resolvedCaseId) {
+        throw new Error("Missing practice case id for update");
+      }
+
+      const endpoint = isNewCase ? "/api/practice_cases/add_case" : `/api/practice_cases/update_case/${resolvedCaseId}`;
+      const method = isNewCase ? "POST" : "PUT";
 
       // CHANGE: feedback_prompt already lives on practiceCase; don't duplicate it
       const payload: any = {
@@ -363,14 +379,14 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         throw new Error(errorData.error || "Failed to save draft");
       }
 
-      if (isNew) {
+      if (isNewCase) {
         setStatusMessage({ type: "success", message: "Draft saved successfully!" });
         const newCase = await response.json();
         setHasUnsavedChanges(false);
         setPracticeCase(newCase);
-
-        // CHANGE: update URL without remount
-        window.history.replaceState({}, "", `/instructor/review/${newCase.id}`);
+        setIsNewCase(false);
+        // CHANGE: update route so subsequent saves hit update endpoint
+        navigate(`/instructor/review/${newCase.id}`, { replace: true });
       } else {
         setStatusMessage({ type: "success", message: "Draft saved successfully!" });
         setHasUnsavedChanges(false);
@@ -403,8 +419,13 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     setIsSaving(true);
 
     try {
-      const endpoint = isNew ? "/api/practice_cases/add_case" : `/api/practice_cases/publish_case/${caseId}`;
-      const method = isNew ? "POST" : "PUT";
+      const resolvedCaseId = practiceCase.id ?? caseId;
+      if (!isNewCase && !resolvedCaseId) {
+        throw new Error("Missing practice case id for publish");
+      }
+
+      const endpoint = isNewCase ? "/api/practice_cases/add_case" : `/api/practice_cases/publish_case/${resolvedCaseId}`;
+      const method = isNewCase ? "POST" : "PUT";
 
       const payload: any = {
         ...practiceCase,
@@ -423,14 +444,14 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
         throw new Error(errorData.error || "Failed to publish practice case");
       }
 
-      if (isNew) {
+      if (isNewCase) {
         setStatusMessage({ type: "success", message: "Publishing new case..." });
         const newCase = await response.json();
         setHasUnsavedChanges(false);
-
-        // CHANGE: update URL without remount
-        window.history.replaceState({}, "", `/instructor/review/${newCase.id}?success=published`);
         setPracticeCase(newCase);
+        setIsNewCase(false);
+        // CHANGE: update route so subsequent actions use publish/update endpoints
+        navigate(`/instructor/review/${newCase.id}?success=published`, { replace: true });
       } else {
         setStatusMessage({ type: "success", message: "Practice case published successfully!" });
         setHasUnsavedChanges(false);
@@ -452,7 +473,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
   };
 
   const handleDelete = async () => {
-    if (isNew) {
+    if (isNewCase) {
       navigate("/instructor/lessons");
       return;
     }
@@ -466,7 +487,12 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
     setIsSaving(true);
 
     try {
-      const response = await fetchWithAuth(`/api/practice_cases/delete_case/${caseId}`, {
+      const targetCaseId = caseId ?? practiceCase?.id;
+      if (!targetCaseId) {
+        throw new Error("Missing practice case id for delete");
+      }
+
+      const response = await fetchWithAuth(`/api/practice_cases/delete_case/${targetCaseId}`, {
         method: "DELETE",
       });
 
@@ -495,7 +521,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
   // CHANGE: flush autosave if leaving Feedback tab or leaving page
   const flushPendingIfAny = useCallback(async () => {
     const current = practiceCaseRef.current;
-    if (!current || isNew || !current.id || !hasUnsavedChangesRef.current) return;
+    if (!current || isNewCase || !current.id || !hasUnsavedChangesRef.current) return;
 
     // Ensure latest feedback prompt is included (in case state batching hasn't committed yet)
     const snapshot: PracticeCase = {
@@ -503,7 +529,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
       feedback_prompt: latestFeedbackRef.current || current.feedback_prompt || "",
     };
     await autoSaveDraft(snapshot);
-  }, [autoSaveDraft, isNew]);
+  }, [autoSaveDraft, isNewCase]);
 
   const handleBackToLessons = async () => {
     await flushPendingIfAny();
@@ -527,9 +553,9 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
   };
 
   if (isLoading) {
-    const loadingTitle = isNew ? "Creating New Case" : "Loading...";
-    const loadingDescription = isNew ? "Getting the editor ready for your new case." : "Loading practice case...";
-    const loadingMessage = isNew ? "Creating new case..." : "Loading practice case...";
+    const loadingTitle = isNewCase ? "Creating New Case" : "Loading...";
+    const loadingDescription = isNewCase ? "Getting the editor ready for your new case." : "Loading practice case...";
+    const loadingMessage = isNewCase ? "Creating new case..." : "Loading practice case...";
 
     return (
       <ClassAwareLayout title={loadingTitle} description={loadingDescription}>
@@ -543,9 +569,9 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
 
   return (
     <ClassAwareLayout
-      title={isNew ? "Create New Practice Case" : "Edit Practice Case"}
+      title={isNewCase ? "Create New Practice Case" : "Edit Practice Case"}
       description={
-        isNew
+        isNewCase
           ? `Create a new conversation practice scenario for ${selectedClass?.course_code || "your class"}`
           : `Editing "${practiceCase?.title || "Practice Case"}" for ${selectedClass?.course_code || "your class"}`
       }
@@ -667,10 +693,10 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
             onSaveDraft={handleSaveDraft}
             onPublish={handlePublish}
             onCancel={handleCancel} // CHANGE: cancel flushes pending autosave
-            onDelete={!isNew ? handleDelete : undefined}
+            onDelete={!isNewCase ? handleDelete : undefined}
             isSaving={isSaving}
             canPublish={canPublish()}
-            isNew={isNew}
+            isNew={isNewCase}
             validationErrors={validateForPublishing()}
             hasUnsavedChanges={hasUnsavedChanges}
             isAutoSaving={isAutoSaving}
@@ -706,7 +732,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                {isNew ? "Save as Draft" : "Save Changes"}
+                {isNewCase ? "Save as Draft" : "Save Changes"}
               </>
             )}
           </Button>
@@ -725,7 +751,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
             ) : (
               <>
                 <Eye className="h-4 w-4 mr-2" />
-                {isNew ? "Save & Publish" : "Publish Case"}
+                {isNewCase ? "Save & Publish" : "Publish Case"}
               </>
             )}
           </Button>
@@ -735,7 +761,7 @@ const ReviewCase: React.FC<{ isNew?: boolean }> = ({ isNew = false }) => {
               Cancel
             </Button>
 
-            {!isNew && (
+            {!isNewCase && (
               <Button variant="destructive" onClick={handleDelete} disabled={isSaving} className="flex-1">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
