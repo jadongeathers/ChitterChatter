@@ -37,7 +37,7 @@ const StudentClassAwareLayout: React.FC<StudentClassAwareLayoutProps> = ({
   if (isLoading && !hasInitialized) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900"></div>
       </div>
     );
   }
@@ -89,7 +89,7 @@ const StudentClassAwareLayout: React.FC<StudentClassAwareLayoutProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-bold truncate">{title}</h1>
-            <p className="text-gray-600 mt-1 text-sm sm:text-base">{description}</p>
+            <p className="mt-1 text-sm text-slate-600 sm:text-base">{description}</p>
           </div>
           
           {/* Class Selection Controls - Single Dropdown */}
@@ -113,7 +113,7 @@ const StudentClassAwareLayout: React.FC<StudentClassAwareLayoutProps> = ({
                   }
                 }}
               >
-                <SelectTrigger className="w-full sm:w-64 bg-white border-gray-300 hover:border-gray-400 transition-colors">
+                <SelectTrigger className="w-full sm:w-64 bg-white border-slate-300 hover:border-slate-400 transition-colors">
                   <SelectValue>
                     <div className="flex items-center space-x-2 min-w-0">
                       {selectedClass ? (
@@ -150,14 +150,14 @@ const StudentClassAwareLayout: React.FC<StudentClassAwareLayoutProps> = ({
                               {cls.course_code} - Section {cls.section_code}
                             </div>
                             {cls.term && (
-                              <div className="text-xs text-gray-500 truncate">
+                          <div className="text-xs text-slate-500 truncate">
                                 {cls.term.name}
                               </div>
                             )}
                           </div>
                         </div>
                         <div className="flex items-center space-x-3 ml-4 flex-shrink-0">
-                          <div className="flex items-center space-x-1 text-xs text-gray-500">
+                          <div className="flex items-center space-x-1 text-xs text-slate-500">
                             <User className="h-3 w-3" />
                             <span>{cls.instructor_name}</span>
                           </div>
@@ -172,7 +172,7 @@ const StudentClassAwareLayout: React.FC<StudentClassAwareLayoutProps> = ({
                       <div className="border-t my-1"></div>
                       <SelectItem value="manage" className="py-3">
                         <div className="flex items-center space-x-3">
-                          <Settings className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                          <Settings className="h-4 w-4 text-slate-600 flex-shrink-0" />
                           <span className="font-medium">Manage Classes...</span>
                         </div>
                       </SelectItem>
@@ -184,7 +184,7 @@ const StudentClassAwareLayout: React.FC<StudentClassAwareLayoutProps> = ({
           )}
         </div>
         
-        <hr className="border-t border-gray-300" />
+        <hr className="border-t border-slate-200" />
       </header>
 
       {/* Page Content */}

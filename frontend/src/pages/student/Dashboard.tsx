@@ -133,29 +133,33 @@ const StudentDashboard: React.FC = () => {
         transition={{ delay: 0.1 }}
         className="mb-8"
       >
-        <h2 className="text-lg font-semibold mb-4 text-gray-800">Your Progress at a Glance</h2>
+        <h2 className="text-lg font-semibold mb-4 text-slate-800">Your Progress at a Glance</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md">
             <CardContent className="p-6">
               <div className="flex items-center">
-                <BookOpen className="h-8 w-8 text-blue-600" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
+                  <BookOpen className="h-6 w-6" />
+                </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Cases Completed</p>
-                  <p className="text-2xl font-bold">{studentStats.completedCases}</p>
-                  <p className="text-xs text-muted-foreground">of {studentStats.totalCases} available</p>
+                  <p className="text-sm font-medium text-slate-500">Cases Completed</p>
+                  <p className="text-2xl font-semibold text-slate-900">{studentStats.completedCases}</p>
+                  <p className="text-xs text-slate-500">of {studentStats.totalCases} available</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md">
             <CardContent className="p-6">
               <div className="flex items-center">
-                <Target className="h-8 w-8 text-green-600" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <Target className="h-6 w-6" />
+                </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Completion Rate</p>
-                  <p className="text-2xl font-bold">{getCompletionRate()}%</p>
-                  <p className="text-xs text-green-600">
+                  <p className="text-sm font-medium text-slate-500">Completion Rate</p>
+                  <p className="text-2xl font-semibold text-slate-900">{getCompletionRate()}%</p>
+                  <p className="text-xs text-emerald-600">
                     {getCompletionRate() >= 75 ? "Excellent progress!" : 
                      getCompletionRate() >= 50 ? "Keep it up!" : 
                      "Just getting started"}
@@ -165,27 +169,31 @@ const StudentDashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md">
             <CardContent className="p-6">
               <div className="flex items-center">
-                <MessageSquare className="h-8 w-8 text-purple-600" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                  <MessageSquare className="h-6 w-6" />
+                </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Conversations</p>
-                  <p className="text-2xl font-bold">{studentStats.totalConversations}</p>
-                  <p className="text-xs text-muted-foreground">Practice sessions</p>
+                  <p className="text-sm font-medium text-slate-500">Conversations</p>
+                  <p className="text-2xl font-semibold text-slate-900">{studentStats.totalConversations}</p>
+                  <p className="text-xs text-slate-500">Practice sessions</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md">
             <CardContent className="p-6">
               <div className="flex items-center">
-                <Clock className="h-8 w-8 text-orange-600" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                  <Clock className="h-6 w-6" />
+                </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Time Practiced</p>
-                  <p className="text-2xl font-bold">{formatTime(studentStats.totalTimeSpent)}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm font-medium text-slate-500">Time Practiced</p>
+                  <p className="text-2xl font-semibold text-slate-900">{formatTime(studentStats.totalTimeSpent)}</p>
+                  <p className="text-xs text-slate-500">
                     {studentStats.averageTimePerCase > 0 ? `${studentStats.averageTimePerCase}m avg per case` : 'Total time spent'}
                   </p>
                 </div>
@@ -202,7 +210,7 @@ const StudentDashboard: React.FC = () => {
         transition={{ delay: 0.2 }}
         className="mb-8"
       >
-        <h2 className="text-lg font-semibold mb-4 text-gray-800">Practice Cases</h2>
+        <h2 className="text-lg font-semibold mb-4 text-slate-800">Practice Cases</h2>
         <AbridgedPracticeCases practiceCases={practiceCases} />
       </motion.div>
 
@@ -213,7 +221,7 @@ const StudentDashboard: React.FC = () => {
         transition={{ delay: 0.3 }}
         className="mb-8"
       >
-        <h2 className="text-lg font-semibold mb-4 text-gray-800">Recent Activity</h2>
+        <h2 className="text-lg font-semibold mb-4 text-slate-800">Recent Activity</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <RecentConversation 
             messages={recentTranscript} 
@@ -229,10 +237,10 @@ const StudentDashboard: React.FC = () => {
         animate={{ opacity: 1 }} 
         transition={{ delay: 0.4 }}
       >
-        <h2 className="text-lg font-semibold mb-4 text-gray-800">Progress Overview</h2>
-        <Card className="border-blue-200 bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
+        <h2 className="text-lg font-semibold mb-4 text-slate-800">Progress Overview</h2>
+        <Card className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center text-blue-800">
+            <CardTitle className="flex items-center text-slate-800">
               <BarChart3 className="h-5 w-5 mr-2" />
               Learning Journey
             </CardTitle>
@@ -245,46 +253,46 @@ const StudentDashboard: React.FC = () => {
               {/* Progress Bar */}
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-700">Overall Completion</span>
-                  <span className="text-sm font-bold text-blue-700">{getCompletionRate()}%</span>
+                  <span className="text-sm font-medium text-slate-600">Overall Completion</span>
+                  <span className="text-sm font-semibold text-slate-800">{getCompletionRate()}%</span>
                 </div>
-                <div className="w-full bg-blue-100 rounded-full h-3">
+                <div className="w-full h-3 rounded-full bg-slate-200">
                   <div 
-                    className="bg-blue-600 h-3 rounded-full transition-all duration-700 ease-out"
+                    className="h-3 rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-700 ease-out"
                     style={{ width: `${getCompletionRate()}%` }}
                   ></div>
                 </div>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="mt-1 text-xs text-slate-500">
                   {studentStats.completedCases} of {studentStats.totalCases} cases completed
                 </p>
               </div>
 
               {/* Key Metrics */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-3 bg-white rounded-lg border border-blue-100">
-                  <div className="text-2xl font-bold text-blue-700">{studentStats.totalConversations}</div>
-                  <div className="text-xs text-gray-600">Total Conversations</div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                  <div className="text-2xl font-semibold text-slate-800">{studentStats.totalConversations}</div>
+                  <div className="text-xs text-slate-500">Total Conversations</div>
                 </div>
-                <div className="text-center p-3 bg-white rounded-lg border border-blue-100">
-                  <div className="text-2xl font-bold text-blue-700">{studentStats.averageTimePerCase}m</div>
-                  <div className="text-xs text-gray-600">Avg Time per Case</div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                  <div className="text-2xl font-semibold text-slate-800">{studentStats.averageTimePerCase}m</div>
+                  <div className="text-xs text-slate-500">Avg Time per Case</div>
                 </div>
-                <div className="text-center p-3 bg-white rounded-lg border border-blue-100">
-                  <div className="text-2xl font-bold text-blue-700">{formatTime(studentStats.totalTimeSpent)}</div>
-                  <div className="text-xs text-gray-600">Total Practice Time</div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                  <div className="text-2xl font-semibold text-slate-800">{formatTime(studentStats.totalTimeSpent)}</div>
+                  <div className="text-xs text-slate-500">Total Practice Time</div>
                 </div>
-                <div className="text-center p-3 bg-white rounded-lg border border-blue-100">
-                  <div className="text-2xl font-bold text-blue-700">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                  <div className="text-2xl font-semibold text-slate-800">
                     {studentStats.totalCases - studentStats.completedCases}
                   </div>
-                  <div className="text-xs text-gray-600">Cases Remaining</div>
+                  <div className="text-xs text-slate-500">Cases Remaining</div>
                 </div>
               </div>
 
               {/* Motivational Message */}
               {getCompletionRate() > 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                  <p className="text-sm text-blue-800">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-center">
+                  <p className="text-sm text-slate-700">
                     {getCompletionRate() === 100 ? 
                       "🎉 Congratulations! You've completed all available cases!" :
                       getCompletionRate() >= 75 ? 

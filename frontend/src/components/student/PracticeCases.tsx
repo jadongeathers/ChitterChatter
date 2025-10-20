@@ -174,44 +174,44 @@ const PracticeCases: React.FC = () => {
       {/* Enhanced Stats and Controls */}
       <div className="space-y-6">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-            <CardContent className="p-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <CardContent className="p-5">
               <div className="flex items-center space-x-3">
-                <div className="bg-green-600 p-2 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-white" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                  <CheckCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-green-900">{getCompletedCount()}</div>
-                  <div className="text-sm text-green-700">Completed</div>
+                  <div className="text-2xl font-semibold text-slate-900">{getCompletedCount()}</div>
+                  <div className="text-sm text-slate-500">Completed</div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <CardContent className="p-4">
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <CardContent className="p-5">
               <div className="flex items-center space-x-3">
-                <div className="bg-blue-600 p-2 rounded-lg">
-                  <Target className="h-5 w-5 text-white" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                  <Target className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-blue-900">{getIncompleteCount()}</div>
-                  <div className="text-sm text-blue-700">Not Yet Complete</div>
+                  <div className="text-2xl font-semibold text-slate-900">{getIncompleteCount()}</div>
+                  <div className="text-sm text-slate-500">Not Yet Complete</div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-gray-100 to-gray-200 border-gray-300">
-            <CardContent className="p-4">
+          <Card className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <CardContent className="p-5">
               <div className="flex items-center space-x-3">
-                <div className="bg-gray-600 p-2 rounded-lg">
-                  <BookOpen className="h-5 w-5 text-white" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                  <BookOpen className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-gray-900">{practiceCases.length}</div>
-                  <div className="text-sm text-gray-700">Total Cases</div>
+                  <div className="text-2xl font-semibold text-slate-900">{practiceCases.length}</div>
+                  <div className="text-sm text-slate-500">Total Cases</div>
                 </div>
               </div>
             </CardContent>
@@ -219,12 +219,12 @@ const PracticeCases: React.FC = () => {
         </div>
 
         {/* Search and Filter Controls */}
-        <Card className="p-6 bg-white shadow-sm border border-gray-200">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full lg:w-auto">
+        <Card className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
+            <div className="flex flex-1 w-full flex-col gap-4 sm:flex-row lg:w-auto">
               {/* Search */}
-              <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-slate-400" />
                 <Input
                   placeholder="Search practice cases..."
                   value={searchTerm}
@@ -263,11 +263,11 @@ const PracticeCases: React.FC = () => {
           </div>
 
           {/* Results Summary */}
-          <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="mt-4 border-t border-slate-100 pt-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 font-medium">{getCaseCountText()}</span>
+              <span className="font-medium text-slate-600">{getCaseCountText()}</span>
               {selectedClass && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="border-slate-200 text-xs text-slate-600">
                   {selectedClass.section_code} • {selectedClass.term?.name}
                 </Badge>
               )}
@@ -317,15 +317,15 @@ const PracticeCases: React.FC = () => {
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center py-16"
+          className="py-16 text-center"
         >
-          <div className="bg-gray-100 p-4 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-            <BookOpen className="h-10 w-10 text-gray-400" />
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 p-4">
+            <BookOpen className="h-10 w-10 text-slate-400" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">
+          <h3 className="mb-2 text-xl font-semibold text-slate-700">
             {searchTerm || filterBy !== "all" ? "No matches found" : "No practice cases yet"}
           </h3>
-          <p className="text-gray-500 mb-6 max-w-md mx-auto">
+          <p className="mx-auto mb-6 max-w-md text-slate-500">
             {getEmptyStateMessage()}
           </p>
           {(searchTerm || filterBy !== "all") && (

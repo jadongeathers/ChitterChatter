@@ -56,14 +56,14 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
         whileHover={{ y: -5, scale: 1.02 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
       >
-        <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col h-full bg-white overflow-hidden group">
+        <Card className="border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col h-full bg-white overflow-hidden group rounded-2xl">
           {/* Status indicator bar */}
           <div className={`h-1 w-full ${
             practiceCase.completed 
-              ? "bg-gradient-to-r from-green-400 to-emerald-500" 
+              ? "bg-gradient-to-r from-emerald-400 to-teal-500" 
               : isAccessible
-                ? "bg-gradient-to-r from-blue-400 to-indigo-500"
-                : "bg-gradient-to-r from-gray-300 to-gray-400"
+                ? "bg-gradient-to-r from-slate-300 to-slate-400"
+                : "bg-gradient-to-r from-amber-200 to-amber-300"
           }`} />
           
           <CardHeader className="flex-grow pb-3">
@@ -72,42 +72,42 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
               <div className="flex items-center space-x-2">
                 <div className={`p-2 rounded-lg ${
                   practiceCase.completed 
-                    ? "bg-green-100" 
+                    ? "bg-emerald-100 text-emerald-600" 
                     : isAccessible 
-                      ? "bg-blue-100" 
-                      : "bg-gray-100"
+                      ? "bg-slate-100 text-slate-600" 
+                      : "bg-amber-100 text-amber-600"
                 }`}>
                   {practiceCase.completed ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4" />
                   ) : isAccessible ? (
-                    <BookOpen className="h-4 w-4 text-blue-600" />
+                    <BookOpen className="h-4 w-4" />
                   ) : (
-                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <Calendar className="h-4 w-4" />
                   )}
                 </div>
-                <div className="text-sm font-medium text-gray-600">Practice Case</div>
+                <div className="text-sm font-medium text-slate-500">Practice Case</div>
               </div>
               
-              <div className="flex items-center text-sm text-gray-500 bg-gray-50 px-3 py-1 rounded-full border">
-                <Clock className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
+              <div className="flex items-center text-sm text-slate-500 bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
+                <Clock className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
                 {formatTimeRange(practiceCase.min_time, practiceCase.max_time)}
               </div>
             </div>
 
             {/* Title - Limited to 2 lines with fixed height */}
-            <CardTitle className="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 mb-2 h-12 leading-6">
+            <CardTitle className="text-lg font-semibold text-slate-900 group-hover:text-slate-700 transition-colors line-clamp-2 mb-2 h-12 leading-6">
               {practiceCase.title}
             </CardTitle>
             
             {/* Description - Limited to 2 lines with fixed height */}
-            <CardDescription className="line-clamp-2 text-gray-600 text-sm leading-5 mb-3 h-10">
+            <CardDescription className="line-clamp-2 text-slate-600 text-sm leading-5 mb-3 h-10">
               {practiceCase.description}
             </CardDescription>
 
             {/* Read More Link */}
             <button
               onClick={() => setIsModalOpen(true)}
-              className="text-sm text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center font-medium transition-colors"
+              className="text-sm text-slate-600 hover:text-slate-800 hover:underline inline-flex items-center font-medium transition-colors"
             >
               Read more
               <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
@@ -118,7 +118,7 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
           <div className="px-6 pb-3">
             <div className="h-8 flex items-start">
               {practiceCase.completed && (
-                <Badge className="bg-green-100 text-green-800 border-green-200">
+                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Completed
                 </Badge>
@@ -138,10 +138,10 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
             <Button
               className={`w-full rounded-lg font-medium transition-all duration-200 ${
                 !isAccessible
-                  ? "bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-300 cursor-not-allowed"
+                  ? "bg-slate-100 text-slate-400 hover:bg-slate-100 border border-slate-200 cursor-not-allowed"
                   : practiceCase.completed
-                  ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl"
-                  : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl"
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow"
+                  : "bg-slate-900 text-white hover:bg-slate-800 shadow-sm hover:shadow"
               }`}
               onClick={() => isAccessible && onStart(practiceCase.id)}
               disabled={!isAccessible}
@@ -162,25 +162,25 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
             <div className="flex items-center space-x-3 mb-4">
               <div className={`p-3 rounded-lg ${
                 practiceCase.completed 
-                  ? "bg-green-100" 
+                  ? "bg-emerald-100 text-emerald-600" 
                   : isAccessible 
-                    ? "bg-blue-100" 
-                    : "bg-gray-100"
+                    ? "bg-slate-100 text-slate-600" 
+                    : "bg-amber-100 text-amber-600"
               }`}>
                 {practiceCase.completed ? (
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+                  <CheckCircle className="h-6 w-6" />
                 ) : isAccessible ? (
-                  <BookOpen className="h-6 w-6 text-blue-600" />
+                  <BookOpen className="h-6 w-6" />
                 ) : (
-                  <Calendar className="h-6 w-6 text-gray-500" />
+                  <Calendar className="h-6 w-6" />
                 )}
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-gray-900 text-left">
+                <DialogTitle className="text-xl font-semibold text-slate-900 text-left">
                   {practiceCase.title}
                 </DialogTitle>
                 {practiceCase.completed && (
-                  <Badge className="bg-green-100 text-green-800 border-green-200 mt-1">
+                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 mt-1">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Completed
                   </Badge>
@@ -192,30 +192,30 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
           <div className="space-y-6">
             {/* Description */}
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
-              <p className="text-gray-700 leading-relaxed">
+              <h4 className="font-semibold text-slate-900 mb-2">Description</h4>
+              <p className="text-slate-600 leading-relaxed">
                 {practiceCase.description}
               </p>
             </div>
 
             {/* Details Grid */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 rounded-lg p-4">
+              <div className="bg-slate-50 rounded-lg p-4">
                 <div className="flex items-center space-x-2 mb-1">
-                  <Clock className="h-4 w-4 text-blue-600" />
-                  <span className="font-semibold text-blue-900">Duration</span>
+                  <Clock className="h-4 w-4 text-slate-600" />
+                  <span className="font-semibold text-slate-700">Duration</span>
                 </div>
-                <p className="text-blue-700">
+                <p className="text-slate-600">
                   {formatTimeRange(practiceCase.min_time, practiceCase.max_time)}
                 </p>
               </div>
 
-              <div className="bg-purple-50 rounded-lg p-4">
+              <div className="bg-emerald-50 rounded-lg p-4">
                 <div className="flex items-center space-x-2 mb-1">
-                  <Calendar className="h-4 w-4 text-purple-600" />
-                  <span className="font-semibold text-purple-900">Availability</span>
+                  <Calendar className="h-4 w-4 text-emerald-600" />
+                  <span className="font-semibold text-emerald-700">Availability</span>
                 </div>
-                <p className="text-purple-700">
+                <p className="text-emerald-700">
                   {practiceCase.accessible_on
                     ? new Date(practiceCase.accessible_on).toLocaleDateString()
                     : "Available Now"}
@@ -228,8 +228,8 @@ const PracticeCaseCard: React.FC<PracticeCaseCardProps> = ({
               <Button
                 className={`w-full rounded-lg font-medium py-3 transition-all duration-200 ${
                   practiceCase.completed
-                  ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl"
-                  : "bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl"
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow"
+                  : "bg-slate-900 text-white hover:bg-slate-800 shadow-sm hover:shadow"
                 }`}
                 onClick={() => {
                   setIsModalOpen(false);

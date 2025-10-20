@@ -94,13 +94,15 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
       animate="visible"
       variants={containerVariants}
     >
-      <Card className="hover:shadow-md transition-shadow">
+      <Card className="rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <BookOpen className="h-6 w-6 text-blue-600 mr-3" />
+              <div className="mr-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                <BookOpen className="h-5 w-5" />
+              </div>
               <div>
-                <CardTitle className="text-gray-800">Practice Cases</CardTitle>
+                <CardTitle className="text-slate-800">Practice Cases</CardTitle>
                 <CardDescription>
                   Continue your learning journey with these practice exercises
                 </CardDescription>
@@ -122,20 +124,24 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
 
           {/* Quick Stats Row */}
           {practiceCases.length > 0 && (
-            <div className="flex items-center gap-6 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-6 border-t border-slate-100 pt-3">
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium text-gray-700">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 text-emerald-600">
+                  <CheckCircle className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-sm font-medium text-slate-600">
                   {completedCases.length} completed
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-gray-700">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-sky-50 text-sky-600">
+                  <Target className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-sm font-medium text-slate-600">
                   {inProgressCases.length} in progress
                 </span>
               </div>
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="outline" className="border-slate-200 text-xs text-slate-600">
                 {practiceCases.length} total
               </Badge>
             </div>
@@ -148,11 +154,11 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
               variants={itemVariants}
               className="text-center py-12"
             >
-              <div className="bg-gray-50 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <BookOpen className="h-8 w-8 text-gray-400" />
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 p-4">
+                <BookOpen className="h-8 w-8 text-slate-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">No Practice Cases Yet</h3>
-              <p className="text-gray-500 max-w-sm mx-auto text-sm">
+              <h3 className="mb-2 text-lg font-semibold text-slate-700">No Practice Cases Yet</h3>
+              <p className="mx-auto max-w-sm text-sm text-slate-500">
                 Your instructor hasn't published any practice cases yet. Check back soon to start your learning journey!
               </p>
             </motion.div>
@@ -161,11 +167,11 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
               variants={itemVariants}
               className="text-center py-12"
             >
-              <div className="bg-amber-50 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 p-4">
                 <BookOpen className="h-8 w-8 text-amber-500" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">Cases Coming Soon</h3>
-              <p className="text-gray-500 max-w-sm mx-auto text-sm">
+              <h3 className="mb-2 text-lg font-semibold text-slate-700">Cases Coming Soon</h3>
+              <p className="mx-auto max-w-sm text-sm text-slate-500">
                 There are {practiceCases.length} practice cases available, but none are accessible yet. Check back later!
               </p>
             </motion.div>
@@ -178,7 +184,7 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
                    !practiceCase.completed && 
                    new Date(practiceCase.accessible_on).getTime() > Date.now() - 86400000 && (
                     <div className="absolute -top-2 -right-2 z-10">
-                      <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-sm flex items-center gap-1 text-xs">
+                      <Badge className="flex items-center gap-1 border-0 bg-gradient-to-r from-sky-300 to-indigo-400 text-xs text-white shadow-sm">
                         <Sparkles className="h-3 w-3" />
                         New
                       </Badge>
@@ -208,14 +214,14 @@ const AbridgedPracticeCases: React.FC<AbridgedPracticeCasesProps> = ({
           {accessibleCases.length > 3 && (
             <motion.div 
               variants={itemVariants}
-              className="mt-6 pt-4 border-t border-gray-100"
+              className="mt-6 border-t border-slate-100 pt-4"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-700">
+                  <p className="text-sm font-medium text-slate-600">
                     {accessibleCases.length - 3} more cases available
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="mt-1 text-xs text-slate-500">
                     Continue your practice with additional exercises
                   </p>
                 </div>
