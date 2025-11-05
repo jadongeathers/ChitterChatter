@@ -76,6 +76,7 @@ const languageCodeMap: Record<string, string> = {
   Polish: "pl",
   Greek: "el",
   Ukrainian: "uk",
+  Tamil: "ta",
 };
 
 // OpenAI voice options with descriptions
